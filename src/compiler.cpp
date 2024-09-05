@@ -318,6 +318,15 @@ BOOL Compiler::flush()
 
 /*-------------------------------------------------------------------------------------------*/
 
+void Compiler::optimizeCode()
+{
+	Function *f;
+
+	for (f = functions.first(); f; f = functions.next(f)) f->optimize();
+}
+
+/*-------------------------------------------------------------------------------------------*/
+
 void Compiler::dumpTokens()
 {
 	Token *t;

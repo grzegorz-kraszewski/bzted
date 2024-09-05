@@ -21,6 +21,8 @@ class Function
 	void expandCall(InterInstruction *ii);
 	void expandAllCalls();
 	void print();
+	BOOL optimize();
+	InterInstruction* lookFor(int instruction, InterInstruction *from);
 
 	private:
 

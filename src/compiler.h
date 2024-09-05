@@ -43,6 +43,7 @@ class Compiler
 	void compileCode();
 	Token* compileFunction(Token *t, Function *f);
 	Token* compileDefinition(Token *t);
+	void optimizeCode();
 	void dumpTokens();
 	void dumpFunctions();
 	BOOL generalErr(const char *msg);

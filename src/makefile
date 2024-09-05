@@ -3,7 +3,7 @@ LD = g++
 CFLAGS = -m68000 -nostdlib -fbaserel -O2 -fomit-frame-pointer -fno-exceptions -fno-rtti -mregparm -D__NOLIBBASE__
 LDFLAGS = -m68000 -nostdlib -fbaserel -nostartfiles -fno-exceptions -fno-rtti
 LIBS = 
-OBJS = start.o main.o compiler.o token.o keyedarray.o builtins.o inter.o function.o
+OBJS = start.o main.o compiler.o token.o keyedarray.o builtins.o inter.o function.o optimizer.o
 EXE = Bzted
 
 all: $(OBJS)

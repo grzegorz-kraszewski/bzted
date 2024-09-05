@@ -29,7 +29,7 @@ const char *CodeNames[] = { NULL,
 
 void InterInstruction::print()  /* a bit slow method */
 {
-	Printf("\t\t%s", CodeNames[code]);
+	Printf("%08lx\t%s", this, CodeNames[code]);
 
 	if (arg)
 	{
