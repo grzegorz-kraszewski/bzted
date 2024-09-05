@@ -56,7 +56,6 @@ void Function::expand()
 	InterInstruction *retn;
 	int regnum;
 
-	Printf("expanding '%s', (%ld/%ld).\n", name, numArguments, numResults);
 	for (regnum = numArguments; regnum > 0; regnum--)
 	{
 		InterInstruction *ii = new InterInstruction(II_DROP, II_D + regnum - 1);
@@ -76,6 +75,36 @@ void Function::expand()
 
 //---------------------------------------------------------------------------------------------
  
-void Function::expandCalls()
+void Function::expandAllCalls()
 {
+	SysListIter<InterInstruction> insns(code);
+	InterInstruction *ii;
+
+	while(ii = insns++)
+	{
+		if (ii->code == II_JSBR) expandCall(ii);
+	}
+}
+
+//---------------------------------------------------------------------------------------------
+
+void Function::expandCall(InterInstruction *call)
+{
+	InterInstruction *ii;
+	Function *called;
+	int regnum;
+
+	called = Comp->functions.find(call->label);
+
+	for (regnum = called->numArguments; regnum > 0; regnum--)
+	{
+		ii = new InterInstruction(II_PULL, II_D + regnum - 1);
+		if (ii) code.insertBefore(call, ii);
+	}
+
+	for (regnum = called->numResults; regnum > 0; regnum--)
+	{
+		ii = new InterInstruction(II_DROP, II_D + regnum - 1);
+		if (ii) code.insertAfter(call, ii);
+	}	
 }

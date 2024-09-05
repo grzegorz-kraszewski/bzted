@@ -122,6 +122,7 @@ void Compiler::updateIdentifiers()
 		if (token->type == TT_IDN)
 		{
 			if (functions.find(token->text)) token->type = TT_FNC;
+			else compileErr(token, "unknown identifer");
 		}
 	}
 }
@@ -136,7 +137,6 @@ void Compiler::compileCode()
 
 	if (!token) { generalErr("no tokens in code"); return; }
 	while (token = compileDefinition(token));
-	expandArgsResults();
 }
 
 /*-------------------------------------------------------------------------------------------*/
@@ -205,7 +205,7 @@ void Compiler::expandArgsResults()
 	while (f = fncs++)
 	{
 		f->expand();
-		f->expandCalls();
+		f->expandAllCalls();
 	}	
 }
 

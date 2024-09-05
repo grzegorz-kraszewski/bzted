@@ -32,12 +32,20 @@ template <class T> class SysList
 		return (head->succ ? FALSE : TRUE);
 	}
 
-	void insert(T *node, T *after)
+	void insertAfter(T *after, T *node)
 	{
 		node->succ = after->succ;
 		node->pred = after;
 		after->succ->pred = node;
 		after->succ = node;
+	}
+
+	void insertBefore(T *before, T *node)
+	{
+		node->succ = before;
+		node->pred = before->pred;
+		before->pred->succ = node;
+		before->pred = node;
 	}
 
 	void remove(T *node)

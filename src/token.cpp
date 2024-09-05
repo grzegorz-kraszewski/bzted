@@ -229,8 +229,8 @@ BOOL Token::compile(Function *function)
 
 		case TT_FNC:
 		{
-			InterInstruction *ii0 = new InterInstruction(II_JSBR, text);
-			if (ii0) function->addCode(ii0);
+			InterInstruction *ii = new InterInstruction(II_JSBR, text);
+			if (ii) function->addCode(ii);
 			else success = FALSE;
 		}
 		break;

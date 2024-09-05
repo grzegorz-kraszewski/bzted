@@ -18,7 +18,8 @@ class Function
 	void addCode(InterInstruction *ii) { code.addtail(ii); }
 	void stackSignature();
 	void expand();
-	void expandCalls();
+	void expandCall(InterInstruction *ii);
+	void expandAllCalls();
 	void print();
 
 	private:
