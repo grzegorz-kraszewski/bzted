@@ -2,7 +2,7 @@
 Experimental concatenative programming language for Amiga
 ## Design goals
 * Concatenative language using stack concept and reverse Polish notation. It may use glyphs for basic operators.
-* Using Amiga OS API should be easy, so the API becomes a standard library. Example "HelloWorld"? `"Hello world!\n" PutStr`
+* Using Amiga OS API should be easy, so the API becomes a standard library. Example "HelloWorld"? `Main: { "Hello world!\n" PutStr }`
 * It should be possible to compile (from C++ sources), use the compiler and use compiled programs written in Bzted on a real, slightly expanded Amiga 1200. My reference system has M68020 processor at 28 MHz, 64 MB fast RAM. While I expect that compiling Bzted compiler may be slow, the Bzted compiler itself should be fast (comparable to Amiga E compiler).
 * Compiler will produce M68k assembler source, compatible with [vasm](http://www.compilers.de/vasm.html) assembler. Producing an executable file without intermediate stage would be cool (and still not excluded in the future), but debugging Bzted compiler will be easier, I can also call `vasm` from the compiler, so it looks like a single stage build.
 * I want Bzted to be a typed language. Not yet sure if I manage to do it by type inference. Basic types are int32 and string. Floating point will be added later. Strings will be nullterminated, as most of AmigaOS API expects it. For now strings are in local 8-bit codepage, UTF-8 is the plan.
