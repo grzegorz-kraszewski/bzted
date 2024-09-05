@@ -6,6 +6,20 @@
 #include "syslist.h"
 #include "inter.h"
 
+
+struct PushPullBlock
+{
+	InterInstruction *push;
+	InterInstruction *pull;
+};
+
+struct RegisterUsage
+{
+	int reg;
+	int usage;
+};
+
+
 class Function
 {
 	public:
@@ -21,8 +35,23 @@ class Function
 	void expandCall(InterInstruction *ii);
 	void expandAllCalls();
 	void print();
+
+	/* optimizer */
+
+	void updateRegisterUsage(RegisterUsage *regarray, int count, InterInstruction *instr);
+    void registerUsageOverBlock(RegisterUsage *regarray, int count, InterInstruction *start,
+		InterInstruction *end);
+	InterInstruction* findPushPullBlock(PushPullBlock &ppblock, InterInstruction *ii);
+	int optimizePushPullBlock(PushPullBlock &ppblock);
+	int optimizeAllPushPullBlocks();
+	void optimizeMovesToSelf();
+	InterInstruction* findMoveCascade();
+	void optimizeMoveCascades();
+	InterInstruction* findMoveToDyadic();
+	void optimizeMovesToDyadic();
+
+
 	BOOL optimize();
-	InterInstruction* lookFor(int instruction, InterInstruction *from);
 
 	private:
 

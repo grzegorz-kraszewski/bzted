@@ -1,8 +1,5 @@
 /* definitions for intermediate code */
 
-#ifndef BZTED_INTER_H
-#define BZTED_INTER_H
-
 /* codes */
 
 #define II_MOVE   1
@@ -28,6 +25,16 @@
 
 #define II_IMMEDIATE  0x00000001
 
+#define IIOP_NONE        0
+#define IIOP_REGISTER    1
+#define IIOP_IMMEDIATE   2  
+
+struct Operand
+{
+	int type;     /* one of IIOP_ */
+	int value;
+};
+
 
 class InterInstruction
 {
@@ -36,48 +43,52 @@ class InterInstruction
 	InterInstruction *succ;
 	InterInstruction *pred;
 	int code;
-	int arg;
-	int out;
+	Operand arg;
+	Operand out;
 	const char *label;
 	int flags;
 
 	InterInstruction(int c)
 	{
-		code = c; arg = 0; out = 0; label = NULL; flags = 0;
+		code = c;
+		arg.type = IIOP_NONE;
+		arg.value = 0;
+		out.type = IIOP_NONE;
+		out.type = 0;
+		label = NULL;
+		flags = 0;
 	}
 
-	InterInstruction(int c, int o)
+	InterInstruction(int c, Operand &o)
 	{ 
-		code = c; arg = NULL; out = o; label = NULL; flags = 0;
+		code = c;
+		arg.type = IIOP_NONE;
+		arg.value = 0;
+		out = o;
+		label = NULL;
+		flags = 0;
 	} 
 
-	InterInstruction(int c, int a, int o)
+	InterInstruction(int c, Operand &a, Operand &o)
 	{ 
-		code = c; arg = a, out = o; label = NULL; flags = 0;
-	}
-
-	InterInstruction(int c, int a, int o, int f)
-	{
-		code = c; arg = a, out = o; label = NULL; flags = f;
+		code = c;
+		arg = a;
+		out = o;
+		label = NULL;
+		flags = 0;
 	}
 
 	InterInstruction(int c, const char *l)
 	{
-		code = c; arg = 0, out = 0; label = l; flags = 0;
+		code = c;
+		arg.type = IIOP_NONE;
+		arg.value = 0;
+		out.type = IIOP_NONE;
+		out.type = 0;
+		label = l;
+		flags = 0;
 	}
 
 	void print();
+	BOOL isDyadic();
 };
-
-/*
-  Virtual stack and register instructions:
-
-  DROP - pushes a register on the stack, value in register is no more used.
-  PUSH - pushes a register on the stack, but value in register will be reused.
-  PULL - pulls top of stack into a register, top of stack is removed.
-  MOVE - moves register x to register y, discarding value in register x (no more used).
-  COPY - moves register x to register y, but register x value stays in place and will be reused.
-
-*/
-
-#endif  /* BZTED_INTER_H */

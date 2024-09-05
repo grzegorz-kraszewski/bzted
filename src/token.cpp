@@ -206,13 +206,14 @@ BOOL Token::parseDefinition()
 BOOL Token::compile(Function *function)
 {
 	BOOL success = TRUE;
-
 	switch (type)
 	{
 		case TT_INT:
 		{
-			InterInstruction *ii0 = new InterInstruction(II_MOVE, intval, II_D + 0, II_IMMEDIATE);
-			InterInstruction *ii1 = new InterInstruction(II_DROP, II_D + 0);
+			Operand op1 = { IIOP_IMMEDIATE, intval };
+			Operand op2 = { IIOP_REGISTER, II_D + 0 };
+			InterInstruction *ii0 = new InterInstruction(II_MOVE, op1, op2);
+			InterInstruction *ii1 = new InterInstruction(II_DROP, op2);
 
 			if (ii0 && ii1)
 			{

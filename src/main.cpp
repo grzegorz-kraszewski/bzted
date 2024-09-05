@@ -25,6 +25,9 @@ LONG Main(WBStartup *wbmsg)
 	PutStr("Function expanding...\n");
 	compiler.expandArgsResults();
 	compiler.dumpFunctions();
+	PutStr("---------------------------\n");
 	compiler.optimizeCode();
+	PutStr("---------------------------\n");
+	compiler.dumpFunctions();
 	return 0;
 }

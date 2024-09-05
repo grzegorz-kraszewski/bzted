@@ -31,23 +31,34 @@ void InterInstruction::print()  /* a bit slow method */
 {
 	Printf("%08lx\t%s", this, CodeNames[code]);
 
-	if (arg)
+	if (arg.type != IIOP_NONE)
 	{
-		if (flags & II_IMMEDIATE) Printf(" #%ld,", arg);
+		if (arg.type == IIOP_IMMEDIATE) Printf(" #%ld,", arg.value);
 		else
 		{
-			if (arg < II_A) Printf(" d%ld,", arg - 1);
-			else Printf(" a%ld,", arg - II_A);
+			if (arg.value < II_A) Printf(" d%ld,", arg.value - 1);
+			else Printf(" a%ld,", arg.value - II_A);
 		}
 	}
 
-	if (out)
+	if (out.type != IIOP_NONE)
 	{
-		if (!arg) PutStr(" ");
-		if (out < II_A) Printf("d%ld", out - 1);
-		else Printf("a%ld", out - II_A);
+		if (arg.type == IIOP_NONE) PutStr(" ");
+		if (out.value < II_A) Printf("d%ld", out.value - 1);
+		else Printf("a%ld", out.value - II_A);
 	}
 
 	if (label) Printf(" %s", label);
 	PutStr("\n");
 } 
+
+//---------------------------------------------------------------------------------------------
+
+BOOL InterInstruction::isDyadic()
+{
+	if (arg.type == IIOP_NONE) return FALSE;
+	if (code == II_COPY) return FALSE;
+	if (code == II_MOVE) return FALSE;
+	if (code == II_EXCH) return FALSE;
+	return TRUE;
+}

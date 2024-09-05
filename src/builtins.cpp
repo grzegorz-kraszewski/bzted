@@ -11,10 +11,12 @@ const struct FuncPin TwoInt[2] = { { BTYPE_INT, BREG_Dn }, { BTYPE_INT, BREG_Dn 
 
 static BOOL OpGenDyadic(Function *function, int op)
 {
-	InterInstruction *ii0 = new InterInstruction(II_PULL, II_D + 1);
-	InterInstruction *ii1 = new InterInstruction(II_PULL, II_D + 0);
-	InterInstruction *ii2 = new InterInstruction(op, II_D + 1, II_D + 0);
-	InterInstruction *ii3 = new InterInstruction(II_DROP, II_D + 0);
+	Operand opr1 = { IIOP_REGISTER, II_D + 1 };
+	Operand opr2 = { IIOP_REGISTER, II_D + 0 }; 
+	InterInstruction *ii0 = new InterInstruction(II_PULL, opr1);
+	InterInstruction *ii1 = new InterInstruction(II_PULL, opr2);
+	InterInstruction *ii2 = new InterInstruction(op, opr1, opr2);
+	InterInstruction *ii3 = new InterInstruction(II_DROP, opr2);
 
 	if (ii0 && ii1 && ii2 && ii3)
 	{
@@ -32,9 +34,10 @@ static BOOL OpGenDyadic(Function *function, int op)
 
 static BOOL OpGenMonadic(Function *function, int op)
 {
-	InterInstruction *ii0 = new InterInstruction(II_PULL, II_D + 0);
-	InterInstruction *ii1 = new InterInstruction(op, II_D + 0);
-	InterInstruction *ii2 = new InterInstruction(II_DROP, II_D + 0);
+	Operand opr1 = { IIOP_REGISTER, II_D + 0 };
+	InterInstruction *ii0 = new InterInstruction(II_PULL, opr1);
+	InterInstruction *ii1 = new InterInstruction(op, opr1);
+	InterInstruction *ii2 = new InterInstruction(II_DROP, opr1);
 
 	if (ii0 && ii1 && ii2)
 	{
@@ -108,9 +111,10 @@ BOOL OpGenFuncEnd(Function *function)
 
 BOOL OpGenDup(Function *function)
 {
-	InterInstruction *ii0 = new InterInstruction(II_PULL, II_D + 0);
-	InterInstruction *ii1 = new InterInstruction(II_PUSH, II_D + 0);
-	InterInstruction *ii2 = new InterInstruction(II_DROP, II_D + 0);
+	Operand opr = { IIOP_REGISTER, II_D + 0 };
+	InterInstruction *ii0 = new InterInstruction(II_PULL, opr);
+	InterInstruction *ii1 = new InterInstruction(II_PUSH, opr);
+	InterInstruction *ii2 = new InterInstruction(II_DROP, opr);
 
 	if (ii0 && ii1 && ii2)
 	{
@@ -127,11 +131,13 @@ BOOL OpGenDup(Function *function)
 
 BOOL OpGenOver(Function *function)
 {
-	InterInstruction *ii0 = new InterInstruction(II_PULL, II_D + 0);
-	InterInstruction *ii1 = new InterInstruction(II_PULL, II_D + 1);
-	InterInstruction *ii2 = new InterInstruction(II_PUSH, II_D + 1);
-	InterInstruction *ii3 = new InterInstruction(II_DROP, II_D + 0);
-	InterInstruction *ii4 = new InterInstruction(II_DROP, II_D + 1);
+	Operand opr1 = { IIOP_REGISTER, II_D + 0 };
+	Operand opr2 = { IIOP_REGISTER, II_D + 1 };
+	InterInstruction *ii0 = new InterInstruction(II_PULL, opr1);
+	InterInstruction *ii1 = new InterInstruction(II_PULL, opr2);
+	InterInstruction *ii2 = new InterInstruction(II_PUSH, opr2);
+	InterInstruction *ii3 = new InterInstruction(II_DROP, opr1);
+	InterInstruction *ii4 = new InterInstruction(II_DROP, opr2);
 
 	if (ii0 && ii1 && ii2 && ii3 && ii4)
 	{
@@ -150,10 +156,12 @@ BOOL OpGenOver(Function *function)
 
 BOOL OpGenFlip(Function *function)
 {
-	InterInstruction *ii0 = new InterInstruction(II_PULL, II_D + 0);
-	InterInstruction *ii1 = new InterInstruction(II_PULL, II_D + 1);
-	InterInstruction *ii2 = new InterInstruction(II_DROP, II_D + 0);
-	InterInstruction *ii3 = new InterInstruction(II_DROP, II_D + 1);
+	Operand opr1 = { IIOP_REGISTER, II_D + 0 };
+	Operand opr2 = { IIOP_REGISTER, II_D + 1 };
+	InterInstruction *ii0 = new InterInstruction(II_PULL, opr1);
+	InterInstruction *ii1 = new InterInstruction(II_PULL, opr2);
+	InterInstruction *ii2 = new InterInstruction(II_DROP, opr1);
+	InterInstruction *ii3 = new InterInstruction(II_DROP, opr2);
 
 	if (ii0 && ii1 && ii2 && ii3)
 	{

@@ -58,7 +58,8 @@ void Function::expand()
 
 	for (regnum = numArguments; regnum > 0; regnum--)
 	{
-		InterInstruction *ii = new InterInstruction(II_DROP, II_D + regnum - 1);
+		Operand opr = { IIOP_REGISTER, II_D + regnum - 1 };
+		InterInstruction *ii = new InterInstruction(II_DROP, opr);
 		if (ii) code.addhead(ii);
 	}
 
@@ -66,7 +67,8 @@ void Function::expand()
 
 	for (regnum = numResults; regnum > 0; regnum--)
 	{
-		InterInstruction *ii = new InterInstruction(II_PULL, II_D + regnum - 1);
+		Operand opr = { IIOP_REGISTER, II_D + regnum - 1 };
+		InterInstruction *ii = new InterInstruction(II_PULL, opr);
 		if (ii) code.addtail(ii);
 	}
 
@@ -98,13 +100,15 @@ void Function::expandCall(InterInstruction *call)
 
 	for (regnum = called->numArguments; regnum > 0; regnum--)
 	{
-		ii = new InterInstruction(II_PULL, II_D + regnum - 1);
+		Operand opr = { IIOP_REGISTER, II_D + regnum - 1 };
+		ii = new InterInstruction(II_PULL, opr);
 		if (ii) code.insertBefore(call, ii);
 	}
 
 	for (regnum = called->numResults; regnum > 0; regnum--)
 	{
-		ii = new InterInstruction(II_DROP, II_D + regnum - 1);
+		Operand opr = { IIOP_REGISTER, II_D + regnum - 1 };
+		ii = new InterInstruction(II_DROP, opr);
 		if (ii) code.insertAfter(call, ii);
 	}	
 }
