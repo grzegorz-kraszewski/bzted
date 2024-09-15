@@ -2,50 +2,42 @@
 
 #include "main.h"
 #include "inter.h"
+#include "strutils.h"
 
 #include <proto/dos.h>
 
 
-#define II_MOVE   1
-#define II_COPY   2
-#define II_PUSH   3
-#define II_PULL   4
-#define II_DROP   5
-#define II_ADDL   6
-#define II_SUBL   7
-#define II_JMPS   8
-#define II_RETN   9
-#define II_NOTL  10
-#define II_ANDL  11
-#define II_ORRL  12
-#define II_EORL  13
-#define II_EXCH  14
+const char *CodeNames[II_INSTRUCTION_COUNT + 1] = { NULL,
+	"MOVE", "COPY", "DMOV", "DCPY", "PUSH", "PULL", "DROP", "ADDL", "SUBL", "JSBR",
+	"RETN", "NOTL",	"ANDL", "ORRL", "EORL", "EXCH" };
 
 
-const char *CodeNames[] = { NULL,
-	"MOVE", "COPY", "PUSH", "PULL", "DROP", "ADDL", "SUBL", "JSBR", "RETN", "NOTL",
-	"ANDL", "ORRL", "EORL", "EXCH" };
+char* Operand::makeString(char *buf)
+{
+	switch (type)
+	{
+		case IIOP_VIRTUAL:      FmtPut(buf, "v%ld", value); break;
+		case IIOP_EDGE:         FmtPut(buf, "e%ld", value); break;
+		case IIOP_DATAREG:      FmtPut(buf, "d%ld", value); break;
+		case IIOP_ADDRREG:      FmtPut(buf, "a%ld", value); break;
+		case IIOP_IMMEDIATE:    FmtPut(buf, "#%ld", value); break;
+	}
+
+	return buf;
+}
 
 
 void InterInstruction::print()  /* a bit slow method */
 {
+	char buf[16];
+
 	Printf("%08lx\t%s", this, CodeNames[code]);
 
-	if (arg.type != IIOP_NONE)
-	{
-		if (arg.type == IIOP_IMMEDIATE) Printf(" #%ld,", arg.value);
-		else
-		{
-			if (arg.value < II_A) Printf(" d%ld,", arg.value - 1);
-			else Printf(" a%ld,", arg.value - II_A);
-		}
-	}
-
+	if (arg.type != IIOP_NONE) Printf(" %s,", arg.makeString(buf));
 	if (out.type != IIOP_NONE)
 	{
 		if (arg.type == IIOP_NONE) PutStr(" ");
-		if (out.value < II_A) Printf("d%ld", out.value - 1);
-		else Printf("a%ld", out.value - II_A);
+		PutStr(out.makeString(buf));
 	}
 
 	if (label) Printf(" %s", label);
@@ -53,12 +45,3 @@ void InterInstruction::print()  /* a bit slow method */
 } 
 
 //---------------------------------------------------------------------------------------------
-
-BOOL InterInstruction::isDyadic()
-{
-	if (arg.type == IIOP_NONE) return FALSE;
-	if (code == II_COPY) return FALSE;
-	if (code == II_MOVE) return FALSE;
-	if (code == II_EXCH) return FALSE;
-	return TRUE;
-}

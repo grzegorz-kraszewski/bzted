@@ -3,11 +3,12 @@
 
 #include <workbench/startup.h>
 
-#include "main.h"
 #include "compiler.h"
+#include "logger.h"
 
 extern Library *SysBase, *DOSBase;
 
+Logger log;
 Compiler *Comp;
 
 /*---------------------------------------------------------------------------*/
@@ -16,18 +17,15 @@ LONG Main(WBStartup *wbmsg)
 {
 	Compiler compiler;
 	Comp = &compiler;
+	wbmsg = wbmsg;
 
+	log.setLevel(LOGLEVEL_DEBUG);
 	compiler.scan("test.bzt");
 	compiler.lex();
 	compiler.dumpTokens();
-	PutStr("---------------------------\n");
-	compiler.compileCode();
-	PutStr("Function expanding...\n");
-	compiler.expandArgsResults();
+	compiler.translate();
 	compiler.dumpFunctions();
-	PutStr("---------------------------\n");
-	compiler.optimizeCode();
-	PutStr("---------------------------\n");
+	compiler.transform();
 	compiler.dumpFunctions();
 	return 0;
 }
