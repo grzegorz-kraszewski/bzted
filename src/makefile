@@ -36,11 +36,13 @@ main.o: main.cpp compiler.h main.h rplist.h strutils.h keyedarray.h \
  token.h function.h inter.h builtins.h operator.h logger.h
 compiler.o: compiler.cpp compiler.h main.h rplist.h strutils.h \
  keyedarray.h token.h function.h inter.h builtins.h operator.h \
- logger.h scanner.h lexer.h
+ logger.h scanner.h lexer.h optimizer.h
 scanner.o: scanner.cpp scanner.h token.h function.h rplist.h \
  strutils.h inter.h logger.h main.h
 lexer.o: lexer.cpp compiler.h main.h rplist.h strutils.h keyedarray.h \
  token.h function.h inter.h builtins.h operator.h lexer.h logger.h
+optimizer.o: optimizer.cpp optimizer.h inter.h rplist.h strutils.h \
+ function.h main.h
 token.o: token.cpp compiler.h main.h rplist.h strutils.h keyedarray.h \
  token.h function.h inter.h builtins.h operator.h logger.h
 function.o: function.cpp main.h compiler.h rplist.h strutils.h \
