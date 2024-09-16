@@ -32,9 +32,13 @@
 #define IIOP_NONE        0
 #define IIOP_VIRTUAL     1
 #define IIOP_EDGE        2
-#define IIOP_DATAREG     3
-#define IIOP_ADDRREG     4
-#define IIOP_IMMEDIATE   5  
+#define IIOP_FARGUMENT   3
+#define IIOP_FRESULT     4
+#define IIOP_CARGUMENT   5
+#define IIOP_CRESULT     6
+#define IIOP_DATAREG     7
+#define IIOP_ADDRREG     8
+#define IIOP_IMMEDIATE   9  
 
 /* errors of generator */
 
