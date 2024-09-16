@@ -19,6 +19,8 @@ void Function::stackSignature()
 {
 	int stackBalance = 0, pullDepth = 0;
 
+	maxStackDepth = 0;
+
 	for (InterInstruction *ii = code.first(); ii; ii = ii->next())
 	{
 		if (ii->code == II_PULL)
@@ -34,6 +36,8 @@ void Function::stackSignature()
 			Function *f = Comp->findFunction(ii->label);
 			stackBalance -= f->numArguments;
 			stackBalance += f->numResults;
+			if (f->numArguments > maxStackDepth) maxStackDepth = f->numArguments;
+			if (f->numResults > maxStackDepth) maxStackDepth = f->numResults;
 		}
 
 		if (stackBalance < pullDepth) pullDepth = stackBalance;
@@ -41,9 +45,13 @@ void Function::stackSignature()
 
 	numArguments = -pullDepth;
 	numResults = numArguments + stackBalance;
+	if (numArguments > maxStackDepth) maxStackDepth = numArguments;
+	if (numResults > maxStackDepth) maxStackDepth = numResults;
+	
 }
 
 //---------------------------------------------------------------------------------------------
+
 
 void Function::expand()
 {
@@ -156,7 +164,7 @@ int Function::replaceAllPushPullBlocks()
 	InterInstruction *ii;
 	PushPullBlock ppblock;
 
-	firstFreeRegister = max(numArguments, numResults);
+	firstFreeRegister = maxStackDepth;
 
 	while (ii = findPushPullBlock(ppblock))
 	{

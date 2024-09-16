@@ -19,6 +19,7 @@ class Function : public RpNode<Function>
 	RpList<InterInstruction> code;
 	int numArguments;
 	int numResults;
+	int maxStackDepth;
 	int firstFreeRegister;
 
 	void expandCall(InterInstruction *ii);
