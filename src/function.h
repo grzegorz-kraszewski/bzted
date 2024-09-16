@@ -6,6 +6,8 @@
 #include "rplist.h"
 #include "inter.h"
 
+class Optimizer;
+
 
 struct PushPullBlock
 {
@@ -16,6 +18,8 @@ struct PushPullBlock
 
 class Function : public RpNode<Function>
 {
+	friend class Optimizer;
+
 	RpList<InterInstruction> code;
 	int numArguments;
 	int numResults;

@@ -5,6 +5,8 @@
 #include "logger.h"
 #include "scanner.h"
 #include "lexer.h"
+#include "optimizer.h"
+
 
 //---------------------------------------------------------------------------------------------
 
@@ -105,7 +107,7 @@ Token* Compiler::translateFunction(Token *token, Function *function)
 	return NULL;
 }
 
-/*-------------------------------------------------------------------------------------------*/
+//---------------------------------------------------------------------------------------------
 
 void Compiler::transform()
 {
@@ -115,6 +117,18 @@ void Compiler::transform()
 		f->expandAllCalls();
 		f->replaceAllPushPullBlocks();
 	}	
+}
+
+//---------------------------------------------------------------------------------------------
+
+void Compiler::optimize()
+{
+	for  (Function *f = functions.first(); f; f = f->next())
+	{
+		Optimizer opt(f);
+
+		opt.optimizeFunction();
+	}
 }
 
 //---------------------------------------------------------------------------------------------

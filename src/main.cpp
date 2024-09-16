@@ -24,8 +24,9 @@ LONG Main(WBStartup *wbmsg)
 	compiler.lex();
 	compiler.dumpTokens();
 	compiler.translate();
-	compiler.dumpFunctions();
 	compiler.transform();
+	compiler.dumpFunctions();
+	compiler.optimize();
 	compiler.dumpFunctions();
 	return 0;
 }

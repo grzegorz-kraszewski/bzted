@@ -4,7 +4,8 @@ CFLAGS = -W -Wall -Wno-parentheses -m68000 -nostdlib -fbaserel -O2 -fomit-frame-
  -fno-rtti -mregparm -D__NOLIBBASE__
 LDFLAGS = -m68000 -nostdlib -fbaserel -nostartfiles -fno-exceptions -fno-rtti
 LIBS = 
-OBJS = start.o main.o compiler.o scanner.o lexer.o token.o function.o inter.o builtins.o logger.o strutils.o
+OBJS = start.o main.o compiler.o scanner.o lexer.o optimizer.o token.o function.o inter.o builtins.o \
+ logger.o strutils.o
 EXE = Bzted
 
 all: $(OBJS)

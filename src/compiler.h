@@ -25,6 +25,7 @@ class Compiler
 	void lex();
 	void translate();
 	void transform();
+	void optimize();
 	void dumpTokens();
 	void dumpFunctions();
 	bool isFunction(const char *name);
