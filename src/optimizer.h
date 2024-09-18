@@ -30,10 +30,13 @@ class Optimizer
 
 	Edge* addEdge(Operand &start);
 	Edge* findEdgeByTip(Operand &op);
+	Edge* findEdgeByIndex(int index);
 	void convertMoveToEdges(InterInstruction *ii);
+	void convertDmovToEdges(InterInstruction *ii);
 	void convertCopyToEdges(InterInstruction *ii);
 	void convertDyadicToEdges(InterInstruction *ii);
 	void convertToEdges();
+	void fuseImmediateOperands();
 
 	public:
 

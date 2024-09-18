@@ -15,6 +15,7 @@ void Optimizer::optimizeFunction()
 {
 	Printf("optimizing %s().\n", f->name);
 	convertToEdges();
+	fuseImmediateOperands();
 }
 
 //---------------------------------------------------------------------------------------------
@@ -24,6 +25,18 @@ Edge* Optimizer::findEdgeByTip(Operand &op)
 	for (Edge *e = edges.first(); e; e = e->next())
 	{
 		if (e->tipIs(op)) return e;
+	}
+
+	return NULL;
+}
+
+//---------------------------------------------------------------------------------------------
+
+Edge* Optimizer::findEdgeByIndex(int index)
+{
+	for (Edge *e = edges.first(); e; e = e->next())
+	{
+		if (e->index() == index) return e;
 	}
 
 	return NULL;
@@ -55,7 +68,6 @@ void Optimizer::convertMoveToEdges(InterInstruction *ii)
 		{
 			case IIOP_FARGUMENT:
 			case IIOP_CRESULT:
-			case IIOP_IMMEDIATE:
 				if (Edge *e = addEdge(ii->out))
 				{
 					ii->out.type = IIOP_EDGE;
@@ -88,6 +100,24 @@ void Optimizer::convertMoveToEdges(InterInstruction *ii)
 		}
 	}
 }
+
+//---------------------------------------------------------------------------------------------
+// DMOV moves external data to virtual register.
+
+void Optimizer::convertDmovToEdges(InterInstruction *ii)
+{
+	switch (ii->arg.type)
+	{
+		case IIOP_IMMEDIATE:
+			if (Edge *e = addEdge(ii->out))
+			{
+				ii->out.type = IIOP_EDGE;
+				ii->out.value = e->index();
+			}
+			break;
+		}
+	}
+
 
 //---------------------------------------------------------------------------------------------
 // COPY is always from virtual register to virtual register. It creates a new edge with tip at
@@ -137,9 +167,34 @@ void Optimizer::convertToEdges()
 		switch (ii->code)
 		{
 			case II_MOVE: convertMoveToEdges(ii); break;
+			case II_DMOV: convertDmovToEdges(ii); break;
 			case II_COPY: convertCopyToEdges(ii); break;
 			case II_ADDL:
 			case II_SUBL: convertDyadicToEdges(ii); break; 
 		}
 	}
 }
+
+//---------------------------------------------------------------------------------------------
+// Function iterares through instruction list. If it finds a DMOV with immediate source operand
+// and edge destination, it follows the edge. If the edge ends at a source operand of a dyadic
+// operation, immediate operand is fused to it. DMOV is removed, edge is removed too.
+
+void Optimizer::fuseImmediateOperands()
+{
+	for (InterInstruction *ii = f->code.first(); ii; ii = ii->next())
+	{
+		if ((ii->code == II_DMOV) && (ii->arg.type == IIOP_IMMEDIATE) && (ii->out.type = IIOP_EDGE))
+		{
+			for (InterInstruction *ij = ii->next(); ij; ij = ij->next())
+			{
+				if (ij->isDyadic() && (ij->arg == ii->out))
+				{
+					ij->arg = ii->arg;
+					ii->remove();
+					findEdgeByIndex(ii->out.value)->remove();
+				}
+			}
+		}
+	}
+} 
