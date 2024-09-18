@@ -37,6 +37,8 @@ class Optimizer
 	void convertDyadicToEdges(InterInstruction *ii);
 	void convertToEdges();
 	void fuseImmediateOperands();
+	void assignRegistersToArguments();
+
 
 	public:
 

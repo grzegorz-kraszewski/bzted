@@ -16,6 +16,7 @@ void Optimizer::optimizeFunction()
 	Printf("optimizing %s().\n", f->name);
 	convertToEdges();
 	fuseImmediateOperands();
+	assignRegistersToArguments();
 }
 
 //---------------------------------------------------------------------------------------------
@@ -198,3 +199,29 @@ void Optimizer::fuseImmediateOperands()
 		}
 	}
 } 
+
+//---------------------------------------------------------------------------------------------
+// m68k register assignment for function arguments and results. For now it is very simple.
+// Fa0/Ca0 is assigned to d0, Fa1/Ca1 to d1... If there is more than 8 arguments, pseudo-
+// registers from d8 are used. They are stored in memory, and addressed via a5 ('d8' is 0(a5),
+// 'd9' is 4(a5) and so on). Results (Fr/Cr) are assigned in the same way. 
+
+void Optimizer::assignRegistersToArguments()
+{
+	for (InterInstruction *ii = f->code.first(); ii; ii = ii->next())
+	{
+		if (ii->code == II_MOVE)
+		{
+			if ((ii->arg.type == IIOP_FARGUMENT) || (ii->arg.type == IIOP_CRESULT))
+			{
+				if (ii->arg.value < 8) ii->arg.type = IIOP_DATAREG;
+				else ii->arg.type = IIOP_MEMREG;
+			}
+			else if ((ii->out.type == IIOP_CARGUMENT) || (ii->out.type == IIOP_FRESULT))
+			{
+				if (ii->out.value < 8) ii->out.type = IIOP_DATAREG;
+				else ii->out.type = IIOP_MEMREG;
+			}
+		}
+ 	}
+}
