@@ -19,15 +19,16 @@ char* Operand::makeString(char *buf)
 {
 	switch (type)
 	{
-		case IIOP_VIRTUAL:      FmtPut(buf, "v%ld", value);   break;
-		case IIOP_EDGE:         FmtPut(buf, "e%ld", value);   break;
-		case IIOP_FARGUMENT:    FmtPut(buf, "Fa%ld", value);  break;
-		case IIOP_FRESULT:      FmtPut(buf, "Fr%ld", value);  break;
-		case IIOP_CARGUMENT:    FmtPut(buf, "Ca%ld", value);  break;
-		case IIOP_CRESULT:      FmtPut(buf, "Cr%ld", value);  break;
-		case IIOP_DATAREG:      FmtPut(buf, "d%ld", value);   break;
-		case IIOP_ADDRREG:      FmtPut(buf, "a%ld", value);   break;
-		case IIOP_IMMEDIATE:    FmtPut(buf, "#%ld", value);   break;
+		case IIOP_VIRTUAL:      FmtPut(buf, "v%ld", value);                break;
+		case IIOP_EDGE:         FmtPut(buf, "e%ld", value);                break;
+		case IIOP_FARGUMENT:    FmtPut(buf, "Fa%ld", value);               break;
+		case IIOP_FRESULT:      FmtPut(buf, "Fr%ld", value);               break;
+		case IIOP_CARGUMENT:    FmtPut(buf, "Ca%ld", value);               break;
+		case IIOP_CRESULT:      FmtPut(buf, "Cr%ld", value);               break;
+		case IIOP_DATAREG:      FmtPut(buf, "d%ld", value);                break;
+		case IIOP_ADDRREG:      FmtPut(buf, "a%ld", value);                break;
+		case IIOP_IMMEDIATE:    FmtPut(buf, "#%ld", value);                break;
+		case IIOP_MEMREG:       FmtPut(buf, "%ld(a5)", (value - 8) << 2);  break;
 	}
 
 	return buf;

@@ -38,7 +38,8 @@
 #define IIOP_CRESULT     6
 #define IIOP_DATAREG     7
 #define IIOP_ADDRREG     8
-#define IIOP_IMMEDIATE   9  
+#define IIOP_IMMEDIATE   9 
+#define IIOP_MEMREG     10
 
 /* errors of generator */
 
