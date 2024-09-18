@@ -9,8 +9,11 @@
 
 const char *CodeNames[II_INSTRUCTION_COUNT + 1] = { NULL,
 	"MOVE", "COPY", "DMOV", "DCPY", "PUSH", "PULL", "DROP", "ADDL", "SUBL", "JSBR",
-	"RETN", "NOTL",	"ANDL", "ORRL", "EORL", "EXCH" };
+	"RETN", "NOTL",	"ANDL", "ORRL", "EORL" };
 
+int DyadicOps[] = { II_ADDL, II_SUBL, II_ANDL, II_ORRL, II_EORL, 0 };
+
+//---------------------------------------------------------------------------------------------
 
 char* Operand::makeString(char *buf)
 {
@@ -30,6 +33,7 @@ char* Operand::makeString(char *buf)
 	return buf;
 }
 
+//---------------------------------------------------------------------------------------------
 
 void InterInstruction::print()  /* a bit slow method */
 {
@@ -49,3 +53,11 @@ void InterInstruction::print()  /* a bit slow method */
 } 
 
 //---------------------------------------------------------------------------------------------
+
+bool InterInstruction::isDyadic()
+{
+	int op, *p = DyadicOps;
+	
+	while (op = *p++) if (code == op) return TRUE;
+	return FALSE;
+}

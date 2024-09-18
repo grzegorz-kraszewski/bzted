@@ -25,7 +25,7 @@
 #define II_ORRL  14
 #define II_EORL  15
 
-#define II_INSTRUCTION_COUNT 16
+#define II_INSTRUCTION_COUNT 15
 
 /* flags */
 
@@ -99,6 +99,7 @@ class InterInstruction : public RpNode<InterInstruction>
 		flags = 0;
 	}
 
+	bool isDyadic();
 	void print();
 	void emit(BPTR outFile, const char* instruction);
 	void emit(BPTR outFile, const char* instruction, const char* operand1);
