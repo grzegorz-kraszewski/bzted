@@ -19,6 +19,7 @@ char* Operand::makeString(char *buf)
 {
 	switch (type)
 	{
+		case IIOP_NONE:         StrCopy("---", buf);                       break;
 		case IIOP_VIRTUAL:      FmtPut(buf, "v%ld", value);                break;
 		case IIOP_EDGE:         FmtPut(buf, "e%ld", value);                break;
 		case IIOP_FARGUMENT:    FmtPut(buf, "Fa%ld", value);               break;
