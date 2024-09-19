@@ -11,6 +11,8 @@ class Edge : public RpNode<Edge>
 {
 	int eIndex;
 	Operand tip;
+	int startInstruction;
+	int endInstruction;
 
 	public:
 
@@ -19,6 +21,9 @@ class Edge : public RpNode<Edge>
 	bool tipIs(Operand &op) { return (tip == op); }
 	void terminate() { tip.type = IIOP_NONE; }
 	int index() { return eIndex; }
+	void intervalStart(int instr) { startInstruction = instr; }
+	void intervalEnd(int instr) { endInstruction = instr - 1; }
+	void print();
 };
 
 
@@ -38,7 +43,8 @@ class Optimizer
 	void convertToEdges();
 	void fuseImmediateOperands();
 	void assignRegistersToArguments();
-
+	void updateEdgesIntervals();
+	void dumpEdges();
 
 	public:
 

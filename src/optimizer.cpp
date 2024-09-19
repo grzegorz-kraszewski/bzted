@@ -11,12 +11,33 @@
 
 //---------------------------------------------------------------------------------------------
 
+void Edge::print()
+{
+	char buf[24];
+
+	Printf("Edge %ld, range [%ld, %ld] operand %s.\n", eIndex, startInstruction, endInstruction,
+		tip.makeString(buf));
+}
+
+//---------------------------------------------------------------------------------------------
+
+void Optimizer::dumpEdges()
+{
+	PutStr("---- edges ----\n");
+	for (Edge *e = edges.first(); e; e = e->next()) e->print();
+	PutStr("----------------\n");
+}
+
+//---------------------------------------------------------------------------------------------
+
 void Optimizer::optimizeFunction()
 {
 	Printf("optimizing %s().\n", f->name);
 	convertToEdges();
 	fuseImmediateOperands();
 	assignRegistersToArguments();
+	updateEdgesIntervals();
+	dumpEdges();
 }
 
 //---------------------------------------------------------------------------------------------
@@ -57,6 +78,7 @@ Edge* Optimizer::addEdge(Operand &start)
 
 	return e;
 }
+
 
 //---------------------------------------------------------------------------------------------
 // At least one of MOVE operands is a virtual register.
@@ -202,7 +224,7 @@ void Optimizer::fuseImmediateOperands()
 
 //---------------------------------------------------------------------------------------------
 // m68k register assignment for function arguments and results. For now it is very simple.
-// Fa0/Ca0 is assigned to d0, Fa1/Ca1 to d1... If there is more than 8 arguments, pseudo-
+// Fa0/Ca0 is assigned to d0, Fa1/Ca1 to d1... If there are more than 8 arguments, pseudo-
 // registers from d8 are used. They are stored in memory, and addressed via a5 ('d8' is 0(a5),
 // 'd9' is 4(a5) and so on). Results (Fr/Cr) are assigned in the same way. 
 
@@ -224,4 +246,38 @@ void Optimizer::assignRegistersToArguments()
 			}
 		}
  	}
+}
+
+//---------------------------------------------------------------------------------------------
+
+void Optimizer::updateEdgesIntervals()
+{
+	int iCounter = 0;
+
+	for (InterInstruction *ii = f->code.first(); ii; ii = ii->next())
+	{
+		switch (ii->code)
+		{
+			case II_DMOV:
+			case II_MOVE:
+			{
+				if (ii->out.type == IIOP_EDGE) findEdgeByIndex(ii->out.value)->intervalStart(iCounter);
+				if (ii->arg.type == IIOP_EDGE) findEdgeByIndex(ii->arg.value)->intervalEnd(iCounter);
+			}
+			break;
+
+			case II_COPY:
+			{
+				if (ii->out.type == IIOP_EDGE) findEdgeByIndex(ii->out.value)->intervalStart(iCounter);
+			}
+			break;
+
+			default:
+			{
+				if (ii->isDyadic()) findEdgeByIndex(ii->arg.value)->intervalEnd(iCounter);
+			}
+		}
+
+		iCounter++;
+	}
 }
