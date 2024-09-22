@@ -16,5 +16,5 @@ class Lexer
 	public:
 
 	Lexer(RpList<Token> *tlist) { tokens = tlist; }
-	void lex();
+	bool lex();
 };

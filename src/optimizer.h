@@ -21,6 +21,9 @@ class Edge : public RpNode<Edge>
 	bool tipIs(Operand &op) { return (tip == op); }
 	void terminate() { tip.type = IIOP_NONE; }
 	int index() { return eIndex; }
+	int getStart() { return startInstruction; }
+	int getEnd() { return endInstruction; }
+	Operand& getTip() { return tip; }
 	void intervalStart(int instr) { startInstruction = instr; }
 	void intervalEnd(int instr) { endInstruction = instr - 1; }
 	void print();
@@ -45,9 +48,12 @@ class Optimizer
 	void assignRegistersToArguments();
 	void updateEdgesIntervals();
 	void dumpEdges();
+	bool allocateRegisters();
+	void applyRegistersToCode();
+	void killRedundantMoves();
 
 	public:
 
 	Optimizer(Function *func) { f = func; edgeCount = 0; }
-	void optimizeFunction();
+	bool optimizeFunction();
 };

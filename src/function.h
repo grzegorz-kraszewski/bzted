@@ -6,6 +6,7 @@
 #include "rplist.h"
 #include "inter.h"
 
+
 class Optimizer;
 
 
@@ -25,18 +26,35 @@ class Function : public RpNode<Function>
 	int numResults;
 	int maxStackDepth;
 	int firstFreeRegister;
-
+	bool resultsToFrame;
+	char* frameLabel;
+	int frameSize;        // in longwords
+	
 	void expandCall(InterInstruction *ii);
+	void expandSysCall(InterInstruction *call);
 	InterInstruction* findPushPullBlock(PushPullBlock &ppblock);
 	void replacePushPullBlock(PushPullBlock &ppblock);
+	
 	public:
 
 	const char *name;
 
-	Function(const char *fname) { name = fname; }
+	Function(const char *fname)
+	{
+		name = fname; 
+		resultsToFrame = 0;
+		frameLabel = NULL;
+		frameSize = 0;
+	}
+	
+	void setResultMode(bool mode) { resultsToFrame = mode; }
+	bool toFrame() { return resultsToFrame; }
+	void setFrame(char *label, int size) { frameLabel = label; frameSize = size; }
+	const char* getFrameLabel() { return frameLabel; }
+	int getFrameSize() { return frameSize; }
 	void addCode(InterInstruction *ii) { code.addTail(ii); }
 	void stackSignature();
-	void expand();
+	bool expand();
 	void expandAllCalls();
 	int replaceAllPushPullBlocks();
 	void print();

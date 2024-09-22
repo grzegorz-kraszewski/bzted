@@ -42,6 +42,17 @@ template <class T> class RpNode
 };
 
 
+template <class T> class RpNamedNode : public RpNode<T>
+{
+	const char *nodeName;
+
+	public:
+	
+	RpNamedNode<T>(const char *n) { nodeName = n; }
+	const char* name() { return nodeName; }
+};
+
+
 template <class T> class RpList
 {
 	T *head;
@@ -58,8 +69,29 @@ template <class T> class RpList
 	T* last() { return (tailpred == (T*)&head) ? NULL : tailpred; }
 	T* remHead() { T *node = first(); if (node) node->remove(); return node; }
 	T* remTail() { T *node = last(); if (node) node->remove(); return node; }
-
 };
+
+
+template <class T> class RpNamedList : public RpList<T>
+{
+	public:
+	
+	T* find(const char *key);
+};
+
+
+template <class T>
+T* RpNamedList<T>::find(const char *key)
+{
+	T* obj;
+
+	for (obj = first(); obj; obj = obj->next())
+	{
+		if (StrCmp(obj->name(), key) == 0) return obj;
+	}
+
+	return NULL; 
+}
 
 
 //---------------------------------------------------------------------------------------------

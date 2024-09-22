@@ -184,13 +184,15 @@ bool OpGenFuncStart(Function *function)
 /*-------------------------------------------------------------------------------------------*/
 /* Array must be sorted by operator name. */
 
-struct KeyedPair<Operator> BuiltIns[11] = {
+struct KeyedPair<Operator> BuiltIns[13] = {
 	{ "&", { 2, 1, OpGenAnd } },
 	{ "+", { 2, 1, OpGenPlus } },
 	{ ",", { 0, 1, OpGenOver } },
 	{ "-", { 2, 1, OpGenMinus } },
 	{ ".", { 1, 1, OpGenDup } },
 	{ ":", { 1, 1, OpGenFlip } },
+	{ "[", { 0, 0, OpGenFuncStart } },
+	{ "]", { 0, 0, OpGenFuncEnd } },
 	{ "^", { 2, 1, OpGenEor } },
 	{ "{", { 0, 0, OpGenFuncStart } },
 	{ "|", { 2, 1, OpGenOr } },

@@ -126,7 +126,7 @@ bool Token::parseHexNumber()
 		digit++;			
 	};
 
-	if (digit == 8)
+	if (c)
 	{
 		log.error("%ld: '%s', hexadecimal number too big for 32 bits", lineNum, text);
 		return FALSE;
@@ -167,7 +167,7 @@ bool Token::parseBinNumber()
 		digit++;			
 	};
 
-	if (digit == 32)
+	if (c)
 	{
 		log.error("%ld: '%s', binary number too big for 32 bits", lineNum, text);
 		return FALSE;
@@ -205,6 +205,8 @@ bool Token::parseIdentifier()
 	if (Comp->isOperator(text)) { type = TT_OPR; return TRUE; }
 
 	if (LastChar(text) == ':') return parseDefinition();
+	
+	if (Comp->isSysCall(text)) { type = TT_SYS; return TRUE; }
 
 	type = TT_IDN;
 	return TRUE;
@@ -252,9 +254,16 @@ bool Token::translate(Function *function)
 
 		case TT_FNC:
 		{
-			InterInstruction *ii = new InterInstruction(II_JSBR, text);
+			Operand op(IIOP_LABEL, (int)text);
+			InterInstruction *ii = new InterInstruction(II_JSBR, op);
 			if (ii) function->addCode(ii);
 			else success = FALSE;
+		}
+		break;
+		
+		case TT_SYS:
+		{
+			success = GenerateSysCall(text, function);
 		}
 		break;
 

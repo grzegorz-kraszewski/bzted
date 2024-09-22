@@ -16,11 +16,12 @@
 
 //---------------------------------------------------------------------------------------------
 
-void Scanner::scan(const char *filename)
+bool Scanner::scan(const char *filename)
 {
 	BPTR file;
 	int chr, error;
-
+	bool result = FALSE;
+	
 	if (file = Open(filename, MODE_OLDFILE))
 	{
 		while (((chr = FGetC(file)) >= 0) && processChar((char)chr));
@@ -30,13 +31,18 @@ void Scanner::scan(const char *filename)
 		{
 			if (stringMode) log.error("unterminated string at end of file (missing `%lc`)",
 				stringMode);
-			else log.info("scanning complete, %ld lines, %ld tokens, %ld bytes used", lineNum,
-				tokenCount, tokenCount * sizeof(Token));
+			else
+			{
+				log.info("scanning complete, %ld lines, %ld tokens", lineNum, tokenCount);
+				result = TRUE;
+			}
 		}
 
 		Close(file);
 	}
 	else log.error(log.fault(IoErr(), "opening source file"));
+
+	return result;
 }
 
 //---------------------------------------------------------------------------------------------

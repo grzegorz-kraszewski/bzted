@@ -24,8 +24,10 @@
 #define II_ANDL  13
 #define II_ORRL  14
 #define II_EORL  15
+#define II_LDEA  16
 
-#define II_INSTRUCTION_COUNT 15
+
+#define II_INSTRUCTION_COUNT 16
 
 /* flags */
 
@@ -40,6 +42,9 @@
 #define IIOP_ADDRREG     8
 #define IIOP_IMMEDIATE   9 
 #define IIOP_MEMREG     10
+#define IIOP_FRAME      11
+#define IIOP_LABEL      12
+#define IIOP_SYSJUMP    13
 
 /* errors of generator */
 
@@ -69,34 +74,23 @@ class InterInstruction : public RpNode<InterInstruction>
 	int code;
 	Operand arg;
 	Operand out;
-	const char *label;
 	int flags;
 
 	InterInstruction(int c) : arg(), out()
 	{
 		code = c;
-		label = NULL;
 		flags = 0;
 	}
 
 	InterInstruction(int c, Operand &o) : arg(), out(o)
 	{ 
 		code = c;
-		label = NULL;
 		flags = 0;
 	} 
 
 	InterInstruction(int c, Operand &a, Operand &o) : arg(a), out(o)
 	{ 
 		code = c;
-		label = NULL;
-		flags = 0;
-	}
-
-	InterInstruction(int c, const char *l) : arg(), out()
-	{
-		code = c;
-		label = l;
 		flags = 0;
 	}
 

@@ -5,6 +5,8 @@
 #include "optimizer.h"
 #include "function.h"
 #include "main.h"
+#include "scheduler.h"
+#include "logger.h"
 
 #include <proto/dos.h>
 
@@ -30,14 +32,25 @@ void Optimizer::dumpEdges()
 
 //---------------------------------------------------------------------------------------------
 
-void Optimizer::optimizeFunction()
+bool Optimizer::optimizeFunction()
 {
+	bool success = FALSE;
+	
 	Printf("optimizing %s().\n", f->name);
 	convertToEdges();
 	fuseImmediateOperands();
 	assignRegistersToArguments();
 	updateEdgesIntervals();
 	dumpEdges();
+
+	if (success = allocateRegisters())
+	{
+		dumpEdges();
+		applyRegistersToCode();
+		killRedundantMoves();
+	}
+		
+	return success;
 }
 
 //---------------------------------------------------------------------------------------------
@@ -91,6 +104,8 @@ void Optimizer::convertMoveToEdges(InterInstruction *ii)
 		{
 			case IIOP_FARGUMENT:
 			case IIOP_CRESULT:
+			case IIOP_ADDRREG:
+			case IIOP_DATAREG:
 				if (Edge *e = addEdge(ii->out))
 				{
 					ii->out.type = IIOP_EDGE;
@@ -113,6 +128,9 @@ void Optimizer::convertMoveToEdges(InterInstruction *ii)
 		{
 			case IIOP_FRESULT:
 			case IIOP_CARGUMENT:
+			case IIOP_FRAME:
+			case IIOP_ADDRREG:
+			case IIOP_DATAREG:
 				if (Edge *e = findEdgeByTip(ii->arg))
 				{
 					ii->arg.type = IIOP_EDGE;
@@ -201,7 +219,8 @@ void Optimizer::convertToEdges()
 //---------------------------------------------------------------------------------------------
 // Function iterares through instruction list. If it finds a DMOV with immediate source operand
 // and edge destination, it follows the edge. If the edge ends at a source operand of a dyadic
-// operation, immediate operand is fused to it. DMOV is removed, edge is removed too.
+// operation or MOVE instruction, immediate operand is fused to it. DMOV is removed, edge is
+// removed too.
 
 void Optimizer::fuseImmediateOperands()
 {
@@ -211,7 +230,7 @@ void Optimizer::fuseImmediateOperands()
 		{
 			for (InterInstruction *ij = ii->next(); ij; ij = ij->next())
 			{
-				if (ij->isDyadic() && (ij->arg == ii->out))
+				if (((ij->code == II_MOVE) || ij->isDyadic()) && (ij->arg == ii->out))
 				{
 					ij->arg = ii->arg;
 					ii->remove();
@@ -279,5 +298,86 @@ void Optimizer::updateEdgesIntervals()
 		}
 
 		iCounter++;
+	}
+}
+
+//---------------------------------------------------------------------------------------------
+// Currently allocator uses "first free" algorithm. It is known to be optimal for interval
+// graphs. However it ignores boundary conditions (edges starting or ending at fixed
+// registers). The edge list is already sorted by interval start, so it may be used directly.
+// The code assumes that only one edge can start at given instruction.
+
+bool Optimizer::allocateRegisters()
+{
+	Scheduler dataRegisters;
+	Edge *edge = edges.first();
+	int iCounter = 0;
+
+	if (dataRegisters.start(32))
+	{
+		while (edge)
+		{
+			if (edge->getStart() == iCounter)
+			{
+				int dataRegister;
+				
+				dataRegister = dataRegisters.useFirstFor(edge->getEnd() - edge->getStart());
+
+				if (dataRegister >= 0)
+				{
+					Operand tip(IIOP_DATAREG, dataRegister);
+					edge->advanceTo(tip);
+				}
+				else
+				{
+					log.error("more than 32 registers used in %s(), compiler limit reached",
+					 f->name);
+					return FALSE;
+				}
+				
+				edge = edge->next();
+			}
+
+			dataRegisters.tick();
+			iCounter++;	
+		}
+		
+		return TRUE;
+	}
+	else return FALSE;	
+}
+
+//---------------------------------------------------------------------------------------------
+
+void Optimizer::applyRegistersToCode()
+{
+	Edge *e;
+	
+	for (InterInstruction *ii = f->code.first(); ii; ii = ii->next())
+	{
+		if (ii->arg.type == IIOP_EDGE)
+		{
+			e = findEdgeByIndex(ii->arg.value);
+			ii->arg = e->getTip();
+		}
+		
+		if (ii->out.type == IIOP_EDGE)
+		{
+			e = findEdgeByIndex(ii->out.value);
+			ii->out = e->getTip();
+		}
+	}
+}
+
+//---------------------------------------------------------------------------------------------
+
+void Optimizer::killRedundantMoves()
+{
+	for (InterInstruction *ii = f->code.first(); ii; ii = ii->next())
+	{
+		if ((ii->code == II_MOVE) || (ii->code == II_COPY))
+		{
+			if (ii->arg == ii->out) ii->remove();
+		}	
 	}
 }

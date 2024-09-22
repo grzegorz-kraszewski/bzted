@@ -39,5 +39,5 @@ class Scanner
 		tokens = tokenList;
 	}
 
-	void scan(const char *filename);
+	bool scan(const char *filename);
 };

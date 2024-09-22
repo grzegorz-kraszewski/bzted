@@ -9,7 +9,7 @@
 #include "main.h"
 #include "logger.h"
 
-void Lexer::lex()
+bool Lexer::lex()
 {
 	BOOL success = TRUE;
 
@@ -40,6 +40,7 @@ void Lexer::lex()
 
 	collectDefinitions();
 	updateIdentifiers();
+	return success;
 }
 
 //---------------------------------------------------------------------------------------------
@@ -54,8 +55,11 @@ void Lexer::collectDefinitions()
 		ahead = token->next();
 		if (!ahead) continue;
 		if (ahead->type != TT_OPR) continue;
-		if (StrCmp(ahead->text, "{") != 0) continue;		
-		Comp->addFunction(token->text);
+
+		if ((StrCmp(ahead->text, "{") == 0) || (StrCmp(ahead->text, "[") == 0))
+		{
+			Comp->addFunction(token->text);
+		}
 	}
 }
 

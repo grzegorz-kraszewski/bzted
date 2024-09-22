@@ -9,7 +9,7 @@
 
 const char *CodeNames[II_INSTRUCTION_COUNT + 1] = { NULL,
 	"MOVE", "COPY", "DMOV", "DCPY", "PUSH", "PULL", "DROP", "ADDL", "SUBL", "JSBR",
-	"RETN", "NOTL",	"ANDL", "ORRL", "EORL" };
+	"RETN", "NOTL",	"ANDL", "ORRL", "EORL", "LDEA" };
 
 int DyadicOps[] = { II_ADDL, II_SUBL, II_ANDL, II_ORRL, II_EORL, 0 };
 
@@ -30,6 +30,9 @@ char* Operand::makeString(char *buf)
 		case IIOP_ADDRREG:      FmtPut(buf, "a%ld", value);                break;
 		case IIOP_IMMEDIATE:    FmtPut(buf, "#%ld", value);                break;
 		case IIOP_MEMREG:       FmtPut(buf, "%ld(a5)", (value - 8) << 2);  break;
+		case IIOP_FRAME:        FmtPut(buf, "%ld(a4)", value << 2);        break;
+		case IIOP_LABEL:        FmtPut(buf, "%s", value);                  break;
+		case IIOP_SYSJUMP:      FmtPut(buf, "%s(a6)", value);              break;
 	}
 
 	return buf;
@@ -50,7 +53,6 @@ void InterInstruction::print()  /* a bit slow method */
 		PutStr(out.makeString(buf));
 	}
 
-	if (label) Printf(" %s", label);
 	PutStr("\n");
 } 
 

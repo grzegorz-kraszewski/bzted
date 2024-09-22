@@ -8,6 +8,8 @@
 
 extern Library *SysBase, *DOSBase;
 
+extern int MemCounter;
+
 Logger log;
 Compiler *Comp;
 
@@ -63,14 +65,22 @@ LONG Main(WBStartup *wbmsg)
 
 		if (outputName)
 		{
-			compiler.scan(inputName);
-			compiler.lex();
+			if (!compiler.scan(inputName)) return RETURN_ERROR;
+			log.verbose("memory usage: %ld bytes", MemCounter);
+			if (!compiler.lex()) return RETURN_ERROR;
+			log.verbose("memory usage: %ld bytes", MemCounter);
 			compiler.dumpTokens();
-			compiler.translate();
-			compiler.transform();
+			if (!compiler.translate()) return RETURN_ERROR;
+			log.verbose("memory usage: %ld bytes", MemCounter);
+			//compiler.dumpFunctions();
+			if (!compiler.transform()) return RETURN_ERROR;
+			log.verbose("memory usage: %ld bytes", MemCounter);
+			//compiler.dumpFunctions();
+			if (!compiler.optimize()) return RETURN_ERROR;
+			log.verbose("memory usage: %ld bytes", MemCounter);
 			compiler.dumpFunctions();
-			compiler.optimize();
-			compiler.dumpFunctions();
+			if (!compiler.generate(inputName, outputName)) return RETURN_ERROR;
+			log.verbose("memory usage: %ld bytes", MemCounter);
 		}
 
 		FreeArgs(args);
