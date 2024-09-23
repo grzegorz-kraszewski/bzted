@@ -178,7 +178,7 @@ bool Function::expandCall(InterInstruction *call)
 			Operand op1(IIOP_LABEL, (int)frameLabel);
 			Operand op2(IIOP_ADDRREG, 4);
 
-			if (InterInstruction *ii = new InterInstruction(II_MOVE, op1, op2))
+			if (InterInstruction *ii = new InterInstruction(II_LDEA, op1, op2))
 			{
 				ii->insertBefore(call);
 			}
