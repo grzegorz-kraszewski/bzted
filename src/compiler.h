@@ -23,6 +23,16 @@ class UsedSysCall : public RpNamedNode<UsedSysCall>
 };
 
 
+class DataFrame : public RpNode<DataFrame>
+{
+	public:
+
+	const char *label;
+	int size;
+	DataFrame(const char *l, int s) { label = l; size = s; }
+};
+
+
 class Compiler
 {
 	RpList<Token> tokens;
@@ -32,6 +42,7 @@ class Compiler
 	KeyedArray<const char*> libraryBases;
 	RpKeyedList<LibraryToOpen> sysLibraries;
 	RpNamedList<UsedSysCall> usedSysCalls;
+	RpList<DataFrame> dataFrames;
 	unsigned int uniqueSeed;
 	bool transResult;
 	
@@ -72,4 +83,5 @@ class Compiler
 	bool addSysLibrary(const char *libname, int minver);
 	bool useSysCall(const char *cn, const char *ln, int off);
 	const char* getLibraryBaseName(const char *libname) { return *libraryBases.find(libname); }
+	const char* addDataFrame(int size);
 };

@@ -27,10 +27,9 @@ class Function : public RpNode<Function>
 	int maxStackDepth;
 	int firstFreeRegister;
 	bool resultsToFrame;
-	char* frameLabel;
-	int frameSize;        // in longwords
+	int frameSize;
 	
-	void expandCall(InterInstruction *ii);
+	bool expandCall(InterInstruction *ii);
 	void expandSysCall(InterInstruction *call);
 	InterInstruction* findPushPullBlock(PushPullBlock &ppblock);
 	void replacePushPullBlock(PushPullBlock &ppblock);
@@ -43,14 +42,10 @@ class Function : public RpNode<Function>
 	{
 		name = fname; 
 		resultsToFrame = 0;
-		frameLabel = NULL;
-		frameSize = 0;
 	}
 	
 	void setResultMode(bool mode) { resultsToFrame = mode; }
 	bool toFrame() { return resultsToFrame; }
-	void setFrame(char *label, int size) { frameLabel = label; frameSize = size; }
-	const char* getFrameLabel() { return frameLabel; }
 	int getFrameSize() { return frameSize; }
 	void addCode(InterInstruction *ii) { code.addTail(ii); }
 	void stackSignature();

@@ -12,8 +12,7 @@ void Function::print()
 {
 	if (resultsToFrame)
 	{
-		Printf("%s: (%ld/%ld), frame ('%s', %ld)\n", name, numArguments, numResults,
-			frameLabel, frameSize);
+		Printf("%s: (%ld/%ld), frame[%ld]\n", name, numArguments, numResults, frameSize);
 	}
 	else
 	{
@@ -81,26 +80,10 @@ bool Function::expand()
 	InterInstruction *retn;
 	int regnum;
 
-	//-------------------------------------------------------------------------
-	// For data frame functions load real register A4 with data frame address.
-	// Also set data frame label and size.
-	//-------------------------------------------------------------------------
-	
 	if (resultsToFrame)
 	{
-		if (numResults > 0)
-		{
-			if (char *frameLabel = new char[8])
-			{
-				Comp->getUniqueLabel(frameLabel);
-				setFrame(frameLabel, numResults);
-				Operand op1(IIOP_LABEL, (int)frameLabel);
-				Operand op2(IIOP_ADDRREG, 4);
-				InterInstruction *ii = new InterInstruction(II_LDEA, op1, op2);
-				if (ii)	code.addHead(ii);
-				else return FALSE;
-			}		
-		}
+		if (numResults > 0) { frameSize = numResults;
+		Printf("expanding %s(), frame size set to %ld\n", name, frameSize); }
 		else
 		{
 			log.error("code block %s() generates empty data frame", name);
@@ -126,9 +109,10 @@ bool Function::expand()
 		else return FALSE;
 	}
 
-	//------------------------------------------------------------
-	// For data frame functions return A4 contents as the result.
-	//------------------------------------------------------------
+	//-----------------------------------------------------------------------------------
+	// For data frame functions return A4 contents as the result. Then replace number of
+	// virtual results (which go into the data frame) with 1 (frame address).
+	//-----------------------------------------------------------------------------------
 	
 	if (resultsToFrame)
 	{
@@ -164,36 +148,63 @@ void Function::expandAllCalls()
 
 //---------------------------------------------------------------------------------------------
 
-void Function::expandCall(InterInstruction *call)
+bool Function::expandCall(InterInstruction *call)
 {
 	InterInstruction *ii;
 	Function *called;
 	int regnum;
 
 	called = Comp->findFunction((const char*)call->out.value);
-	
+
 	for (regnum = called->numArguments; regnum > 0; regnum--)
 	{
 		Operand opr(IIOP_CARGUMENT, regnum - 1);
 		ii = new InterInstruction(II_PULL, opr);
 		if (ii) ii->insertBefore(call);
+		else return FALSE;
 	}
 
-	///------------------------------------------------------------------------
+	//-------------------------------------------------------------------------
+	// For data frame function add a new frame to the list of frames to be
+	// created in bss section. Then load frame address to a4 register.
+	//-------------------------------------------------------------------------
+
+	if (called->toFrame())
+	{
+		Printf("called %s() with frame[%ld]\n", called->name, called->getFrameSize());
+
+		if (const char *frameLabel = Comp->addDataFrame(called->getFrameSize()))
+		{
+			Operand op1(IIOP_LABEL, (int)frameLabel);
+			Operand op2(IIOP_ADDRREG, 4);
+
+			if (InterInstruction *ii = new InterInstruction(II_MOVE, op1, op2))
+			{
+				ii->insertBefore(call);
+			}
+			else return FALSE;
+		}
+		else return FALSE;
+	}
+
+	//-------------------------------------------------------------------------
 	// Functions returning a data frame put their results in the data frame.
 	// The only result being put on stack is the data frame address, so number
 	// of arguments to expand here is always 1.
 	//-------------------------------------------------------------------------
-	
+
 	int realResults = called->numResults;
 	if (called->toFrame()) realResults = 1;
-		
+
 	for (regnum = realResults; regnum > 0; regnum--)
 	{
 		Operand opr(IIOP_CRESULT, regnum - 1);
 		ii = new InterInstruction(II_DROP, opr);
 		if (ii) ii->insertAfter(call);
-	}	
+		else return FALSE;
+	}
+
+	return TRUE;
 }
 
 //---------------------------------------------------------------------------------------------

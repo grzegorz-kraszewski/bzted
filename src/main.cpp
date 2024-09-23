@@ -69,13 +69,13 @@ LONG Main(WBStartup *wbmsg)
 			log.verbose("memory usage: %ld bytes", MemCounter);
 			if (!compiler.lex()) return RETURN_ERROR;
 			log.verbose("memory usage: %ld bytes", MemCounter);
-			compiler.dumpTokens();
+			//compiler.dumpTokens();
 			if (!compiler.translate()) return RETURN_ERROR;
 			log.verbose("memory usage: %ld bytes", MemCounter);
-			//compiler.dumpFunctions();
+			compiler.dumpFunctions();
 			if (!compiler.transform()) return RETURN_ERROR;
 			log.verbose("memory usage: %ld bytes", MemCounter);
-			//compiler.dumpFunctions();
+			compiler.dumpFunctions();
 			if (!compiler.optimize()) return RETURN_ERROR;
 			log.verbose("memory usage: %ld bytes", MemCounter);
 			compiler.dumpFunctions();

@@ -172,12 +172,9 @@ bool Compiler::transform()
 {
 	log.setModule("transformer");
 	
-	for  (Function *f = functions.first(); f; f = f->next())
-	{
-		if (!(f->expand())) return FALSE;
-		f->expandAllCalls();
-		f->replaceAllPushPullBlocks();
-	}	
+	for (Function *f = functions.first(); f; f = f->next()) if (!(f->expand())) return FALSE;
+	for (Function *f = functions.first(); f; f = f->next())	f->expandAllCalls();
+	for (Function *f = functions.first(); f; f = f->next()) f->replaceAllPushPullBlocks();
 	
 	return TRUE;
 }
@@ -465,12 +462,9 @@ void Compiler::generateBss(BPTR asmFile)
 	// data frames
 	//-------------
 	
-	for (Function *f = functions.first(); f; f = f->next())
+	for (DataFrame *df = dataFrames.first(); df; df = df->next())
 	{
-		if (f->getFrameSize() > 0)
-		{
-			FPrintf(asmFile, "%s:\n\t\tDS.L\t%ld\n", f->getFrameLabel(), f->getFrameSize());
-		}
+		FPrintf(asmFile, "%s:\n\t\tDS.L\t%ld\n", df->label, df->size);
 	}
 }
 
@@ -486,4 +480,24 @@ bool Compiler::useSysCall(const char *callName, const char *libName, int offset)
 	if (!uc) return FALSE;
 	usedSysCalls.addTail(uc);
 	return TRUE;
+}
+
+//---------------------------------------------------------------------------------------------
+
+const char* Compiler::addDataFrame(int size)
+{
+	if (char *label = new char[8])
+	{
+		getUniqueLabel(label);
+
+		if (DataFrame *df = new DataFrame(label, size))
+		{
+			dataFrames.addTail(df);
+			return label;
+		}
+
+		delete label;
+	}
+
+	return FALSE;
 }

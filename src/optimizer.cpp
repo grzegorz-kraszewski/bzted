@@ -38,8 +38,11 @@ bool Optimizer::optimizeFunction()
 	
 	Printf("optimizing %s().\n", f->name);
 	convertToEdges();
+	f->print();
 	fuseImmediateOperands();
+	f->print();
 	assignRegistersToArguments();
+	f->print();
 	updateEdgesIntervals();
 	dumpEdges();
 
@@ -219,8 +222,7 @@ void Optimizer::convertToEdges()
 //---------------------------------------------------------------------------------------------
 // Function iterares through instruction list. If it finds a DMOV with immediate source operand
 // and edge destination, it follows the edge. If the edge ends at a source operand of a dyadic
-// operation or MOVE instruction, immediate operand is fused to it. DMOV is removed, edge is
-// removed too.
+// operation, immediate operand is fused to it. DMOV is removed, edge is removed too.
 
 void Optimizer::fuseImmediateOperands()
 {
@@ -230,7 +232,7 @@ void Optimizer::fuseImmediateOperands()
 		{
 			for (InterInstruction *ij = ii->next(); ij; ij = ij->next())
 			{
-				if (((ij->code == II_MOVE) || ij->isDyadic()) && (ij->arg == ii->out))
+				if (ij->isDyadic() && (ij->arg == ii->out))
 				{
 					ij->arg = ii->arg;
 					ii->remove();
