@@ -30,7 +30,7 @@ class Function : public RpNode<Function>
 	int frameSize;
 	
 	bool expandCall(InterInstruction *ii);
-	void expandSysCall(InterInstruction *call);
+	bool expandSysCall(InterInstruction *call);
 	InterInstruction* findPushPullBlock(PushPullBlock &ppblock);
 	void replacePushPullBlock(PushPullBlock &ppblock);
 	

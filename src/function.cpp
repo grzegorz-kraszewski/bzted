@@ -209,15 +209,17 @@ bool Function::expandCall(InterInstruction *call)
 
 //---------------------------------------------------------------------------------------------
 
-void Function::expandSysCall(InterInstruction *call)
+bool Function::expandSysCall(InterInstruction *call)
 {
 	if (SysCall *sc = Comp->findSysCall((const char*)call->out.value))
 	{
+		InterInstruction *insertPoint;
 		const char *p;
 		char regType, regNumber;
 		int opType;
 		
 		p = sc->arguments;
+		insertPoint = call;
 		
 		while((regType = *p++) && (regNumber = *p++))
 		{
@@ -225,10 +227,17 @@ void Function::expandSysCall(InterInstruction *call)
 			if (regType == 'a') opType = IIOP_ADDRREG;
 			regNumber -= '0';
 			Operand op(opType, regNumber);
-			if (InterInstruction *ii = new InterInstruction(II_PULL, op)) ii->insertBefore(call);
+
+			if (InterInstruction *ii = new InterInstruction(II_PULL, op))
+			{
+				ii->insertBefore(insertPoint);
+				insertPoint = ii;
+			}
+			else return FALSE;
 		}
 
 		p = sc->results;
+		insertPoint = call;
 		
 		while((regType = *p++) && (regNumber = *p++))
 		{
@@ -236,9 +245,17 @@ void Function::expandSysCall(InterInstruction *call)
 			if (regType == 'a') opType = IIOP_ADDRREG;
 			regNumber -= '0';
 			Operand op(opType, regNumber);
-			if (InterInstruction *ii = new InterInstruction(II_DROP, op)) ii->insertAfter(call);
+
+			if (InterInstruction *ii = new InterInstruction(II_DROP, op))
+			{
+				ii->insertAfter(insertPoint);
+				insertPoint = ii;
+			}
+			else return FALSE;
 		}
 	}
+
+	return TRUE;
 }
 
 //---------------------------------------------------------------------------------------------
