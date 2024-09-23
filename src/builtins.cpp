@@ -172,6 +172,21 @@ bool OpGenFlip(Function *function)
 	return FALSE;
 }
 
+//---------------------------------------------------------------------------------------------
+
+bool OpGenPop(Function *function)
+{
+	Operand opr1(IIOP_VIRTUAL, 0);
+	InterInstruction *ii0 = new InterInstruction(II_PULL, opr1);
+
+	if (ii0)
+	{
+		function->addCode(ii0);
+		return TRUE;
+	}
+
+	return FALSE;
+}
 
 /*-------------------------------------------------------------------------------------------*/
 
@@ -184,7 +199,7 @@ bool OpGenFuncStart(Function *function)
 /*-------------------------------------------------------------------------------------------*/
 /* Array must be sorted by operator name. */
 
-struct KeyedPair<Operator> BuiltIns[13] = {
+struct KeyedPair<Operator> BuiltIns[14] = {
 	{ "&", { 2, 1, OpGenAnd } },
 	{ "+", { 2, 1, OpGenPlus } },
 	{ ",", { 0, 1, OpGenOver } },
@@ -192,6 +207,7 @@ struct KeyedPair<Operator> BuiltIns[13] = {
 	{ ".", { 1, 1, OpGenDup } },
 	{ ":", { 1, 1, OpGenFlip } },
 	{ "[", { 0, 0, OpGenFuncStart } },
+	{ "\\", { 1, 0, OpGenPop } },
 	{ "]", { 0, 0, OpGenFuncEnd } },
 	{ "^", { 2, 1, OpGenEor } },
 	{ "{", { 0, 0, OpGenFuncStart } },

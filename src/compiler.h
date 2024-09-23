@@ -58,7 +58,7 @@ class Compiler
 
 	Compiler()
 	{
-		operators.fetch(BuiltIns, 13);
+		operators.fetch(BuiltIns, 14);
 		sysCalls.fetch(SysCalls, 22); 
 		libraryBases.fetch(BaseNames, 3);
 		uniqueSeed = 0x000F4243;
