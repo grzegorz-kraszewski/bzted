@@ -268,6 +268,7 @@ bool Token::translate(Function *function)
 		break;
 
 		default:
+			log.error("%ld: unknown token '%s'", lineNum, text);
 			success = FALSE;		
 	}
 

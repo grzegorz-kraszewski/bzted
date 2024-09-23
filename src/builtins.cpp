@@ -2,7 +2,7 @@
 
 #include "builtins.h"
 #include "function.h"
-
+#include "syscalls.h"
 
 /*-------------------------------------------------------------------------------------------*/
 
@@ -188,6 +188,49 @@ bool OpGenPop(Function *function)
 	return FALSE;
 }
 
+//---------------------------------------------------------------------------------------------
+
+bool OpGenMul(Function *function)
+{
+	return GenerateSysCall("SMult32", function);
+}
+
+//---------------------------------------------------------------------------------------------
+
+bool OpGenDiv(Function *function)
+{
+	if (GenerateSysCall("SDivMod32", function))
+	{
+		return OpGenPop(function);   // remove unused modulus result
+	}
+
+	return FALSE;
+}
+
+//---------------------------------------------------------------------------------------------
+
+bool OpGenMod(Function *function)
+{
+	if (GenerateSysCall("SDivMod32", function))
+	{
+		Operand opr1(IIOP_VIRTUAL, 0);  // discard division result
+		Operand opr2(IIOP_VIRTUAL, 1);
+		InterInstruction *ii0 = new InterInstruction(II_PULL, opr1);
+		InterInstruction *ii1 = new InterInstruction(II_PULL, opr2);
+		InterInstruction *ii2 = new InterInstruction(II_DROP, opr1);
+
+		if (ii0 && ii1 && ii2)
+		{
+			function->addCode(ii0);
+			function->addCode(ii1);
+			function->addCode(ii2);
+			return TRUE;
+		}		
+	}
+
+	return FALSE;
+}
+
 /*-------------------------------------------------------------------------------------------*/
 
 bool OpGenFuncStart(Function *function)
@@ -199,7 +242,8 @@ bool OpGenFuncStart(Function *function)
 /*-------------------------------------------------------------------------------------------*/
 /* Array must be sorted by operator name. */
 
-struct KeyedPair<Operator> BuiltIns[14] = {
+struct KeyedPair<Operator> BuiltIns[17] = {
+	{ "%", { 2, 1, OpGenMod } },
 	{ "&", { 2, 1, OpGenAnd } },
 	{ "+", { 2, 1, OpGenPlus } },
 	{ ",", { 0, 1, OpGenOver } },
@@ -213,5 +257,7 @@ struct KeyedPair<Operator> BuiltIns[14] = {
 	{ "{", { 0, 0, OpGenFuncStart } },
 	{ "|", { 2, 1, OpGenOr } },
 	{ "}", { 0, 0, OpGenFuncEnd } },
-	{ "~", { 1, 1, OpGenNot } }
+	{ "~", { 1, 1, OpGenNot } },
+	{ "×", { 2, 1, OpGenMul } },
+	{ "÷", { 2, 1, OpGenDiv } }
 };

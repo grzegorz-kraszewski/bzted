@@ -6,7 +6,7 @@
 // Must be sorted by key!
 //------------------------
 
-struct KeyedPair<SysCall> SysCalls[22] = {
+struct KeyedPair<SysCall> SysCalls[23] = {
 	{"Close", {"dos.library", -36, "d1", "d0", 34}},
 	{"CreateDir", {"dos.library", -120, "d1", "d0", 34}},
 	{"CurrentDir", {"dos.library", -126, "d1", "d0", 34}},
@@ -25,8 +25,9 @@ struct KeyedPair<SysCall> SysCalls[22] = {
 	{"PutStr", {"dos.library", -948, "d1", "d0", 36}}, 
 	{"Read", {"dos.library", -42, "d1d2d3", "d0", 34}},
 	{"Rename", {"dos.library", -78, "d1d2", "d0", 34}},
-	{"Seek", {"dos.library", -66, "d1d2d3", "d0", 34}},
+	{"SDivMod32", {"utility.library", -150, "d0d1", "d1d0", 36}},
 	{"SMult32", {"utility.library", -138, "d0d1", "d0", 36}},
+	{"Seek", {"dos.library", -66, "d1d2d3", "d0", 34}},
 	{"UnLock", {"dos.library", -90, "d1", "", 34}},
 	{"Write", {"dos.library", -48, "d1d2d3", "d0", 34}}
 };

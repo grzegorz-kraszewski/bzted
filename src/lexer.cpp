@@ -20,7 +20,10 @@ bool Lexer::lex()
 		switch(c)
 		{
 			case '$':   success = t->parseHexNumber(); break;
-			case '%':   success = t->parseBinNumber(); break;
+			case '%':
+				if (t->textSize > 1) success = t->parseBinNumber();
+				else success = t->parseIdentifier();
+			break;
 			case 0x22:
 			case 0x27:  success = t->parseString(); break;
 			case '-':
