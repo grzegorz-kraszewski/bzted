@@ -425,9 +425,8 @@ void Compiler::generateLibOpenClose(BPTR asmFile)
 
 	for (LibraryToOpen *lib = sysLibraries.first(); lib; lib = lib->next())
 	{
-		FPrintf(asmFile, "\t\tDC.L\tlibname%ld,%ld,%s\n", libCounter, lib->getVersion(),
+		FPrintf(asmFile, "\t\tDC.L\tlibname%ld,%ld,%s\n", libCounter++, lib->getVersion(),
 		 lib->getBase());
-		libCounter++;
 	}	
 	
 	FPuts(asmFile, "\t\tDC.L\t0\n");
@@ -438,7 +437,7 @@ void Compiler::generateLibOpenClose(BPTR asmFile)
 	{
 		const char *pad = "";
 		if ((StrLen(lib->name) & 1) == 0) pad = ",0";
-		FPrintf(asmFile, "libname%ld:\n\t\tDC.B\t\"%s\",0%s\n", libCounter, lib->name, pad);
+		FPrintf(asmFile, "libname%ld:\n\t\tDC.B\t\"%s\",0%s\n", libCounter++, lib->name, pad);
 	}	
 
 }
