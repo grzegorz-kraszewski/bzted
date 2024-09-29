@@ -236,7 +236,7 @@ bool Token::translate(Function *function)
 		{
 			Operand op1(IIOP_IMMEDIATE, intValue);
 			Operand op2(IIOP_VIRTUAL, 0);
-			InterInstruction *ii0 = new InterInstruction(II_DMOV, op1, op2);
+			InterInstruction *ii0 = new InterInstruction(II_MOVE, op1, op2);
 			InterInstruction *ii1 = new InterInstruction(II_DROP, op2);
 
 			if (ii0 && ii1)
