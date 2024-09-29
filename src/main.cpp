@@ -77,13 +77,13 @@ LONG Main(WBStartup *wbmsg)
 			log.verbose("memory usage: %ld bytes", MemCounter);
 			compiler.dumpFunctions();
 
-
+/*
 			if (!compiler.optimize()) return RETURN_ERROR;
 			log.verbose("memory usage: %ld bytes", MemCounter);
 			compiler.dumpFunctions();
 			if (!compiler.generate(inputName, outputName)) return RETURN_ERROR;
 			log.verbose("memory usage: %ld bytes", MemCounter);
-
+*/
 		}
 
 		FreeArgs(args);
