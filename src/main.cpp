@@ -43,14 +43,15 @@ static char* createOutputName(const char *input)
 
 //-----------------------------------------------------------------------------
 
-LONG Main(WBStartup *wbmsg)
+int Main(WBStartup *wbmsg)
 {
 	Compiler compiler;
 	Comp = &compiler;
 	wbmsg = wbmsg;
 	RDArgs *args;
 	LONG argArray[2] = { 0, 0 };
-
+	int result = RETURN_ERROR;
+	
 	wbmsg = wbmsg;
 	log.setLevel(LOGLEVEL_DEBUG);
 
@@ -65,30 +66,35 @@ LONG Main(WBStartup *wbmsg)
 
 		if (outputName)
 		{
-			if (!compiler.scan(inputName)) return RETURN_ERROR;
-			log.verbose("memory usage: %ld bytes", MemCounter);
-			if (!compiler.lex()) return RETURN_ERROR;
-			log.verbose("memory usage: %ld bytes", MemCounter);
-			compiler.dumpTokens();
-			if (!compiler.translate()) return RETURN_ERROR;
+			if (compiler.scan(inputName))
+			{
+				log.verbose("memory usage: %ld bytes", MemCounter);
+				if (compiler.lex())
+				{
+					log.verbose("memory usage: %ld bytes", MemCounter);
+					compiler.dumpTokens();
+					result = RETURN_OK;
+				}
+			}
+		}
+
+
+/*			if (!compiler.translate()) return RETURN_ERROR;
 			log.verbose("memory usage: %ld bytes", MemCounter);
 			compiler.dumpFunctions();
 			if (!compiler.transform()) return RETURN_ERROR;
 			log.verbose("memory usage: %ld bytes", MemCounter);
 			compiler.dumpFunctions();
-
-/*
 			if (!compiler.optimize()) return RETURN_ERROR;
 			log.verbose("memory usage: %ld bytes", MemCounter);
 			compiler.dumpFunctions();
 			if (!compiler.generate(inputName, outputName)) return RETURN_ERROR;
 			log.verbose("memory usage: %ld bytes", MemCounter);
 */
-		}
 
 		FreeArgs(args);
 	}
 	else PrintFault(IoErr(), "bzted: arguments");
 
-	return 0;
+	return result;
 }
