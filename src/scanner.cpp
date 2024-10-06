@@ -12,7 +12,7 @@
 
 #include <proto/dos.h>
 
-#define IsBracket(c) IsInString((c), "()[]{}")
+#define IsBracket(c) IsInString((c), "[]{}")
 
 //---------------------------------------------------------------------------------------------
 
