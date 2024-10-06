@@ -19,22 +19,34 @@
 bool Scanner::scan(const char *filename)
 {
 	BPTR file;
-	int chr, error;
-	bool result = FALSE;
+	bool success = FALSE;
 	
 	if (file = Open(filename, MODE_OLDFILE))
 	{
-		while (((chr = FGetC(file)) >= 0) && processChar((char)chr));
+		int chr, error;
+		success = TRUE;
 
-		if (error = IoErr()) log.error(log.fault(error, "error reading file"));
-		else
+		while (success && ((chr = FGetC(file)) >= 0))
 		{
-			if (stringMode) log.error("unterminated string at end of file (missing `%lc`)",
-				stringMode);
+			success = processChar((char)chr);
+		}
+
+		if (success)
+		{
+			success = FALSE;
+
+			if (error = IoErr())
+			{
+				log.error(log.fault(error, "error reading file"));
+			}
+			else if (stringMode)
+			{
+				log.error("unterminated string at end of file (missing `%lc`)", stringMode);
+			}
 			else
 			{
 				log.info("scanning complete, %ld lines, %ld tokens", lineNum, tokenCount);
-				result = TRUE;
+				success = TRUE;
 			}
 		}
 
@@ -42,7 +54,7 @@ bool Scanner::scan(const char *filename)
 	}
 	else log.error(log.fault(IoErr(), "opening source file"));
 
-	return result;
+	return success;
 }
 
 //---------------------------------------------------------------------------------------------
