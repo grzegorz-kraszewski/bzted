@@ -36,7 +36,7 @@ bool Optimizer::optimizeFunction()
 {
 	bool success = FALSE;
 	
-	Printf("optimizing %s().\n", f->name);
+	Printf("optimizing %s().\n", f->name());
 	convertToEdges();
 	f->print();
 	fuseImmediateOperands();
@@ -333,7 +333,7 @@ bool Optimizer::allocateRegisters()
 				else
 				{
 					log.error("more than 32 registers used in %s(), compiler limit reached",
-					 f->name);
+					 f->name());
 					return FALSE;
 				}
 				

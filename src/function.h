@@ -17,7 +17,7 @@ struct PushPullBlock
 };
 
 
-class Function : public RpNode<Function>
+class Function : public RpNamedNode<Function>
 {
 	friend class Optimizer;
 
@@ -36,11 +36,8 @@ class Function : public RpNode<Function>
 	
 	public:
 
-	const char *name;
-
-	Function(const char *fname)
+	Function(const char *name) : RpNamedNode<Function>(name)
 	{
-		name = fname; 
 		resultsToFrame = 0;
 	}
 	

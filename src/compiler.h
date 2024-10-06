@@ -36,7 +36,7 @@ class DataFrame : public RpNode<DataFrame>
 class Compiler
 {
 	RpList<Token> tokens;
-	RpKeyedList<Function> functions;
+	RpNamedList<Function> functions;
 	KeyedArray<Operator> operators;
 	KeyedArray<SysCall> sysCalls;
 	KeyedArray<const char*> libraryBases;

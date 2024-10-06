@@ -319,11 +319,12 @@ const char* Compiler::determineMainFunctionName()
 		if (!(main = functions.find("main")))
 		{
 			main = functions.first();
-			log.warning("no Main() or main() function defined, program starts from %s()", main->name);			
+			log.warning("no Main() or main() function defined, program starts from %s()",
+			 main->name());			
 		}
 	}
 
-	return main->name;
+	return main->name();
 }
 
 //---------------------------------------------------------------------------------------------

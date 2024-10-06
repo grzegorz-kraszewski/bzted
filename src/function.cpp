@@ -12,11 +12,11 @@ void Function::print()
 {
 	if (resultsToFrame)
 	{
-		Printf("%s: (%ld/%ld), frame[%ld]\n", name, numArguments, numResults, frameSize);
+		Printf("%s: (%ld/%ld), frame[%ld]\n", name(), numArguments, numResults, frameSize);
 	}
 	else
 	{
-		Printf("%s: (%ld/%ld)\n", name, numArguments, numResults);
+		Printf("%s: (%ld/%ld)\n", name(), numArguments, numResults);
 	}
 	for (InterInstruction *ii = code.first(); ii; ii = ii->next()) ii->print();
 };
@@ -83,10 +83,10 @@ bool Function::expand()
 	if (resultsToFrame)
 	{
 		if (numResults > 0) { frameSize = numResults;
-		Printf("expanding %s(), frame size set to %ld\n", name, frameSize); }
+		Printf("expanding %s(), frame size set to %ld\n", name(), frameSize); }
 		else
 		{
-			log.error("code block %s() generates empty data frame", name);
+			log.error("code block %s() generates empty data frame", name());
 			return FALSE;
 		}
 	}
@@ -171,7 +171,7 @@ bool Function::expandCall(InterInstruction *call)
 
 	if (called->toFrame())
 	{
-		Printf("called %s() with frame[%ld]\n", called->name, called->getFrameSize());
+		Printf("called %s() with frame[%ld]\n", called->name(), called->getFrameSize());
 
 		if (const char *frameLabel = Comp->addDataFrame(called->getFrameSize()))
 		{

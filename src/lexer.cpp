@@ -115,7 +115,7 @@ bool Lexer::collectDefinitions()
 			}
 		}
 	}
-	
+
 	return success;
 }
 
@@ -125,7 +125,7 @@ bool Lexer::collectDefinitions()
 bool Lexer::updateIdentifiers()
 {
 	bool result = TRUE;
-	
+
 	for (Token *token = tokens.first(); token; token = token->next())
 	{
 		if (token->type == TT_IDN)
@@ -138,6 +138,6 @@ bool Lexer::updateIdentifiers()
 			}
 		}
 	}
-	
+
 	return result;
 }
