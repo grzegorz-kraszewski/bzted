@@ -19,7 +19,7 @@ void UsedSysCall::generate(BPTR file)
 
 bool Compiler::scan(const char *fileName)
 {
-	Scanner scanner(&tokens);
+	Scanner scanner(tokens);
 
 	log.setModule("scanner");
 	return scanner.scan(fileName);

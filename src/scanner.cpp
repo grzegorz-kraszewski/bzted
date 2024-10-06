@@ -130,7 +130,7 @@ bool Scanner::addChar(char c)
 		if (t)
 		{
 			t->lineNum = lineNum;
-			tokens->addTail(t);
+			tokens.addTail(t);
 			haveToken = TRUE;
 			tokenCount++;
 		}
@@ -141,7 +141,7 @@ bool Scanner::addChar(char c)
 
 	if (bufPos >= 64)
 	{
-		tokens->last()->append(buf, 64);
+		tokens.last()->append(buf, 64);
 		bufPos = 0;
 	}
 
@@ -156,7 +156,7 @@ bool Scanner::flush()
 
 	if (bufPos > 0)
 	{
-		success = tokens->last()->append(buf, bufPos);
+		success = tokens.last()->append(buf, bufPos);
 		bufPos = 0;
 	}
 

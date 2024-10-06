@@ -20,7 +20,7 @@ class Scanner
 	bool haveToken;
 	bool comment;
 	char stringMode;
-	RpList<Token> *tokens;
+	RpList<Token> &tokens;
 
 	bool processChar(char c);
 	bool addChar(char c);
@@ -28,7 +28,7 @@ class Scanner
 
 	public:
 
-	Scanner(RpList<Token> *tokenList)
+	Scanner(RpList<Token> &tokenList) : tokens(tokenList)
 	{
 		lineNum = 1;
 		bufPos = 0;
@@ -36,7 +36,6 @@ class Scanner
 		haveToken = FALSE;
 		comment = FALSE;
 		stringMode = 0;
-		tokens = tokenList;
 	}
 
 	bool scan(const char *filename);
