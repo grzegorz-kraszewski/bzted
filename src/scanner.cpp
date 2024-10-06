@@ -57,7 +57,7 @@ bool Scanner::processChar(char c)
 
 	if (c == 0x00)
 	{
-		log.error("unexpected character NUL (0x00) in line %ld (binary file?)", lineNum);
+		log.lineError(lineNum, "unexpected character 0x00 (binary file?)");
 		return FALSE;
 	}
 
@@ -75,7 +75,7 @@ bool Scanner::processChar(char c)
 		{
 			if (bufPos > 0)
 			{
-				log.error("missing space before string in line %ld", lineNum);
+				log.lineError(lineNum, "missing space before string");
 				return FALSE;
 			}
 			else
