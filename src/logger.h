@@ -11,8 +11,10 @@ class Logger
 {
 	int level;
 	const char *module;
+	const char *source;
 	char faultBuffer[96];
 	void log(int level, const char *msg, int *args);
+	void lineLog(int level, int line, const char *msg, int *args);
 
 	public:
 
@@ -46,9 +48,16 @@ class Logger
 		log(LOGLEVEL_DEBUG, fmt, args);
 	}
 
+	void lineError(int line, const char *fmt, ...)
+	{
+		int *args = (int*)&fmt + 1;
+		lineLog(LOGLEVEL_ERROR, line, fmt, args);
+	}
+
 	void outOfMemory();
 	void setLevel(int newlevel) { level = newlevel; }
 	void setModule(const char *mod) { module = mod; }
+	void setSource(const char *filename) { source = filename; }
 	char* fault(int syserror, const char *prefix);
 };
 

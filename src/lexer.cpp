@@ -13,27 +13,36 @@ bool Lexer::lex()
 {
 	BOOL success = TRUE;
 
-	for (Token *t = tokens->first(); success && t; t = t->next())
+	for (Token *t = tokens.first(); success && t; t = t->next())
 	{
 		char c = t->text[0];
 
 		switch(c)
 		{
-			case '$':   success = t->parseHexNumber(); break;
+			case '$':
+				success = t->parseHexNumber();
+			break;
+
 			case '%':
 				if (t->textSize > 1) success = t->parseBinNumber();
 				else success = t->parseIdentifier();
 			break;
+
 			case 0x22:
-			case 0x27:  success = t->parseString(); break;
+			case 0x27:
+				success = t->parseString();
+			break;
+
 			case '-':
 				if (t->textSize > 1) success = t->parseDecNumber();
 				else success = t->parseIdentifier();
 			break;
+
 			case '+':
 				if (t->textSize > 1) success = t->parseDecNumber();
 				else success = t->parseIdentifier();
 			break;
+
 			default:
 				if (IsDigit(c)) success = t->parseDecNumber();
 				else success = t->parseIdentifier();
@@ -41,41 +50,94 @@ bool Lexer::lex()
 		}
 	}
 
-	collectDefinitions();
-	updateIdentifiers();
+	if (success)
+	{
+		if (success = collectDefinitions())
+		{
+			success = updateIdentifiers();
+		}
+	}
+
 	return success;
 }
 
 //---------------------------------------------------------------------------------------------
 
-void Lexer::collectDefinitions()
+bool Lexer::collectDefinitions()
 {
 	Token *ahead;
+	bool success = TRUE;
 
-	for (Token *token = tokens->first(); token; token = token->next())
+	for (Token *token = tokens.first(); token; token = token->next())
 	{
-		if (token->type != TT_DEF) continue;
-		ahead = token->next();
-		if (!ahead) continue;
-		if (ahead->type != TT_OPR) continue;
-
-		if ((StrCmp(ahead->text, "{") == 0) || (StrCmp(ahead->text, "[") == 0))
+		if (token->type == TT_DEF)
 		{
-			Comp->addFunction(token->text);
+			if (ahead = token->next())
+			{
+				if (ahead->type == TT_OPR)
+				{
+					if (StrCmp(ahead->text, "{") == 0)
+					{
+						//-----------------------------
+						// regular function definition
+						//-----------------------------
+
+						if (!(Comp->addFunction(token->text))) success = FALSE;
+					}
+					else if (StrCmp(ahead->text, "[") == 0)
+					{
+
+						//---------------------------------
+						// data frame generator definition
+						//---------------------------------
+
+						if (!(Comp->addFunction(token->text))) success = FALSE;
+					}
+					else
+					{
+						log.lineError(ahead->lineNum, "unexpected operator '%s' in '%s'",
+						 ahead->text, token->text);
+						success = FALSE;
+					}
+				}
+				else
+				{
+					log.lineError(ahead->lineNum, "unexpected token '%s' in '%s'",
+					 ahead->text, token->text);
+					success = FALSE;
+				}
+			}
+			else
+			{
+				log.lineError(token->lineNum, "unexpected end of code in '%s'",
+				 token->text);
+				success = FALSE;
+			}
 		}
 	}
+	
+	return success;
 }
 
 //---------------------------------------------------------------------------------------------
+// Searches for each identifier token in the array of function definitions. 
 
-void Lexer::updateIdentifiers()
+bool Lexer::updateIdentifiers()
 {
-	for (Token *token = tokens->first(); token; token = token->next())
+	bool result = TRUE;
+	
+	for (Token *token = tokens.first(); token; token = token->next())
 	{
 		if (token->type == TT_IDN)
 		{
 			if (Comp->isFunction(token->text)) token->type = TT_FNC;
-			else log.error("%ld: '%s', unknown identifer", token->lineNum, token->text);
+			else
+			{
+				log.lineError(token->lineNum, "unknown identifer '%s'", token->text);
+				result = FALSE;
+			}
 		}
 	}
+	
+	return result;
 }

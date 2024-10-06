@@ -66,6 +66,8 @@ int Main(WBStartup *wbmsg)
 
 		if (outputName)
 		{
+			log.setSource(inputName);
+
 			if (compiler.scan(inputName))
 			{
 				log.verbose("memory usage: %ld bytes", MemCounter);

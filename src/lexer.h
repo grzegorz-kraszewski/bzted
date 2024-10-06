@@ -8,13 +8,13 @@
 
 class Lexer
 {
-	RpList<Token> *tokens;
+	RpList<Token> &tokens;
 	
-	void collectDefinitions();
-	void updateIdentifiers();
+	bool collectDefinitions();
+	bool updateIdentifiers();
 
 	public:
 
-	Lexer(RpList<Token> *tlist) { tokens = tlist; }
+	Lexer(RpList<Token> &tlist) : tokens(tlist) {}
 	bool lex();
 };
