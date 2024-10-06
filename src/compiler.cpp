@@ -29,7 +29,7 @@ bool Compiler::scan(const char *fileName)
 
 bool Compiler::lex()
 {
-	Lexer lexer(&tokens);
+	Lexer lexer(tokens);
 
 	log.setModule("lexer");
 	return lexer.lex();
