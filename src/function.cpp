@@ -61,8 +61,10 @@ bool Function::parseSignature()
 				}
 				else
 				{
-					log.lineError(lineNum, "unknown type '%lc' specified in arguments of '%s'",
-					 x, name());
+					if (x == ')') log.lineError(lineNum, "missing dot in signature of '%s'",
+					 name());
+					else log.lineError(lineNum, "unknown type '%lc' specified in arguments "
+					 "of '%s'", x, name());
 					return FALSE;
 				}
 			break;
@@ -89,7 +91,7 @@ bool Function::parseSignature()
 		}
 	}
 
-	log.lineError(lineNum, "signature not found in definition of '%s'", name());
+	log.lineError(lineNum, "missing or incomplete signature in definition of '%s'", name());
 	return FALSE;
 }
 
