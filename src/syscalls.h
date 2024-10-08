@@ -1,34 +1,36 @@
 /* Callable system calls */
 
-#include <exec/types.h>
+#include "keyedarray.h"
+#include "rplist.h"
 
-#define VR_D0 1
-#define VR_A0 2
-#define VR_D1 3
-#define VR_A1 4
+#include <exec/types.h>
 
 struct SysCall
 {
-	const char *name;
 	const char *library;
-	LONG offset;
-	char args[12];
+	int offset;
+	const char *arguments;
+	const char *results;
+	int minLibVersion;
 };
 
-#define NUMCALLS 5
-	
-class SysCalls
+extern struct KeyedPair<SysCall> SysCalls[];
+extern struct KeyedPair<const char*> BaseNames[];
+
+bool GenerateSysCall(const char *name, Function *f);
+
+
+class LibraryToOpen : public RpNode<LibraryToOpen>
 {
-	static const SysCall calls[NUMCALLS] = {
-		{ "Close", "dos.library", -36, { VR_D1, 0 } },
-		{ "Open", "dos.library", -30, { VR_D1, VR_D2, 0 } },
-		{ "PutStr", "dos.library", -948, { VR_D1, 0 } },
-		{ "Read", "dos.library", -42, { VR_D1, VR_D2, VR_D3, 0 } },
-		{ "Write", "dos.library", -48, { VR_D1, VR_D2, VR_D3, 0 }
-	};
+	const char *baseName;
+	int minVersion;
 
 	public:
-
-	SysCall* find(char *name);
+	
+	const char *name;
+	
+	LibraryToOpen(const char* libname, int minver);
+	void bumpVersion(int minver) { if (minver > minVersion) minVersion = minver; }
+	const char* getBase() { return baseName; }
+	int getVersion() { return minVersion; }
 };
-  	

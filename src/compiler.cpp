@@ -2,164 +2,98 @@
 #include <proto/dos.h>
 
 #include "compiler.h"
+#include "logger.h"
+#include "scanner.h"
+#include "lexer.h"
+#include "optimizer.h"
 
 
-#define IsBracket(c) IsInString((c), "()[]{}")
+//---------------------------------------------------------------------------------------------
 
-
-LONG IsSpace(char c)
+void UsedSysCall::generate(BPTR file)
 {
-	return ((c == 0x20) || (c == 0x09) || (c == 0x0A) || (c == 0x0D));
-}
-
-
-LONG IsDigit(char c)
-{
-	return ((c >= '0') && (c <= '9'));	
-}
-
-
-BOOL IsInString(char c, char *s)
-{
-	char x;
-
-	while (x = *s++) if (x == c) break;
-	return x;
-}
-
-
-/*-------------------------------------------------------------------------------------------*/
-
-void Compiler::scan(char *filename)
-{
-	BPTR file;
-	int chr, error;
-			
-	if (file = Open(filename, MODE_OLDFILE))
-	{
-		while (((chr = FGetC(file)) >= 0) && processChar((char)chr));
-
-		if (error = IoErr()) PrintFault(error, "error reading file");
-		else
-		{
-			if (strmode) Printf("Unterminated string at end of file (missing `%lc`).\n", strmode);
-			else Printf("Scanning complete, %ld lines, %ld tokens, %ld bytes used.\n", linenum,
-			tokencount, tokencount * sizeof(Token));
-		}
-
-		Close(file);
-	}
-	else PrintFault(IoErr(), "error opening source code");
-}
-
-/*-------------------------------------------------------------------------------------------*/
-
-void Compiler::lex()
-{
-	SysListIter<Token> tks(tokens);
-	Token *t;
-	BOOL success = TRUE;
-
-	while (success && (t = tks++))
-	{
-		char c = t->text[0];
-
-		switch(c)
-		{
-			case '$':   success = t->parseHexNumber(); break;
-			case '%':   success = t->parseBinNumber(); break;
-			case 0x22:
-			case 0x27:  success = t->parseString(); break;
-			case '-':
-				if (t->textsize > 1) success = t->parseDecNumber();
-				else success = t->parseIdentifier();
-			break;
-			case '+':
-				if (t->textsize > 1) success = t->parseDecNumber();
-				else success = t->parseIdentifier();
-			break;
-			default:
-				if (IsDigit(c)) success = t->parseDecNumber();
-				else success = t->parseIdentifier();
-			break;
-		}
-	}
-
-	grabDefinitions();
-	updateIdentifiers();
-}
-
-/*-------------------------------------------------------------------------------------------*/
-
-void Compiler::grabDefinitions()
-{
-	SysListIter<Token> tks(tokens);
-	Token *token, *ahead;
-	Function *newFunc;
-
-	while (token = tks++)
-	{
-		if (token->type != TT_DEF) continue;
-		ahead = tokens.next(token);
-		if (!ahead) continue;
-		if (ahead->type != TT_OPR) continue;
-		if (StrCmp(ahead->text, "{") != 0) continue;		
-		newFunc = new Function(token->text);
-		if (!newFunc) return; /* compileErr(token, "out of memory"); */
-		functions.addtail(newFunc);
-	}
-}
-
-/*-------------------------------------------------------------------------------------------*/
-
-void Compiler::updateIdentifiers()
-{
-	SysListIter<Token> tks(tokens);
-	Token *token;
-
-	while (token = tks++)
-	{
-		if (token->type == TT_IDN)
-		{
-			if (functions.find(token->text)) token->type = TT_FNC;
-			else compileErr(token, "unknown identifer");
-		}
-	}
-}
-
-/*-------------------------------------------------------------------------------------------*/
-
-void Compiler::compileCode()
-{
-	Token *token = tokens.first();
-	const char *functionName = NULL;
-	BOOL success = TRUE;
-
-	if (!token) { generalErr("no tokens in code"); return; }
-	while (token = compileDefinition(token));
-}
-
-/*-------------------------------------------------------------------------------------------*/
-
-Token* Compiler::compileDefinition(Token *token)
-{
-	const char *objectName = token->text;
-	Function *function;
-	Token *ahead;
-
-	if (token->type != TT_DEF) return compileErr(token, "code outside of function");
-	if (function = functions.find(token->text)) return compileFunction(token, function);
-	else return compileErr(token, "unknown type of definition");
-
+	FPrintf(file, "%-23s = %ld\t; %s\n", name(), offset, libName);
 }
 
 //---------------------------------------------------------------------------------------------
-// Token passed is the definition name.
 
-Token* Compiler::compileFunction(Token *token, Function *function)
+bool Compiler::scan(const char *fileName)
 {
-	token = tokens.next(token);   // opening bracket (verified earlier)
-	token = tokens.next(token);   // the first token of function body
+	Scanner scanner(tokens);
+
+	log.setModule("scanner");
+	return scanner.scan(fileName);
+}
+
+//---------------------------------------------------------------------------------------------
+
+bool Compiler::lex()
+{
+	Lexer lexer(tokens);
+
+	log.setModule("lexer");
+	return lexer.lex();
+}
+
+/*-------------------------------------------------------------------------------------------*/
+
+bool Compiler::translate()
+{
+	Token *token = tokens.first();
+
+	log.setModule("translator");
+	transResult = TRUE;
+	if (!token) { log.error ("no tokens in code"); return FALSE; }
+	while (token = translateDefinition(token));
+	return transResult;
+}
+
+/*-------------------------------------------------------------------------------------------*/
+
+Token* Compiler::translateDefinition(Token *token)
+{
+	Function *function;
+
+	if (token->type != TT_DEF)
+	{
+		log.error("%ld: '%s', code outside of function", token->lineNum, token->text);
+		transResult = FALSE;
+		return NULL;
+	}
+
+	if (function = functions.find(token->text)) return translateCodeBlock(token->next(), function);
+	else
+	{
+		log.error("%ld: '%s', unknown type of definition", token->lineNum, token->text);
+		transResult = FALSE;
+		return NULL;
+	}
+}
+
+//---------------------------------------------------------------------------------------------
+// Token passed is the opening bracket of the block.
+
+Token* Compiler::translateCodeBlock(Token *token, Function *function)
+{
+	const char *rightClosing = "";
+	const char *wrongClosing = "";
+
+	if (StrCmp(token->text, "{") == 0)
+	{
+		function->setResultMode(RESULTS_TO_STACK);
+		rightClosing = "}";
+		wrongClosing = "]";
+	}
+		
+	if (StrCmp(token->text, "[") == 0)
+	{
+		function->setResultMode(RESULTS_TO_FRAME);
+		rightClosing = "]";
+		wrongClosing = "}";
+	}
+
+	token = token->next();   // the first token of function body
+
 	while (token)
 	{
 		switch (token->type)
@@ -168,203 +102,409 @@ Token* Compiler::compileFunction(Token *token, Function *function)
 			case TT_STR:
 			case TT_FNC:
 			case TT_SYS:
-				if (!token->compile(function)) return NULL;
+				if (!(transResult = token->translate(function))) return NULL;
 			break;
 
 			case TT_OPR:
-				if (StrCmp(token->text, "{") == 0)
-					return compileErr(token, "nested anonymous functions not yet implemented");
-				else
+			{
+				if ((StrCmp(token->text, "{") == 0) || (StrCmp(token->text, "[") == 0)) 
 				{
-					if (!token->compile(function)) return NULL;
-					if (StrCmp(token->text, "}") == 0)
+					if (char *label = new char[8])
 					{
-						function->stackSignature();
-						return token->next();
+						getUniqueLabel(label);
+
+						if (Function *f2 = addFunction(label, token->lineNum))
+						{
+							token = translateCodeBlock(token, f2);
+							
+							// adding JSBR to anonymous code block
+							// the code may be inlined later
+							
+							Operand op(IIOP_LABEL, (int)label);
+							InterInstruction *ii = new InterInstruction(II_JSBR, op);
+							if (ii) function->addCode(ii);
+							else { transResult = FALSE; return NULL; }
+							
+							if (token) continue;
+							else return NULL;
+						}
 					}
 				}
+				else
+				{
+					if (!(transResult = token->translate(function))) return NULL;
+					
+
+					if (StrCmp(token->text, rightClosing) == 0)
+					{
+						function->stackSignature();						
+						return token->next();
+					}
+
+					if (StrCmp(token->text, wrongClosing) == 0)
+					{
+						log.error("%ld: '%s', incorrect nesting of code blocks", token->lineNum,
+							token->text);
+						transResult = FALSE;
+						return NULL;
+					}
+				}
+			}
 			break;
 
 			case TT_DEF:
-				return compileErr(token, "nested definitions are not allowed");
+				log.error("%ld: '%s', nested definitions are not allowed", token->lineNum, token->text);
+				transResult = FALSE;
+				return NULL;
+			break;
 		}
 
-		token = tokens.next(token);
+		token = token->next();
 	}	
 
-	return compileErr(token->pred, "unexpected end of file inside function");
-}
-
-/*-------------------------------------------------------------------------------------------*/
-
-void Compiler::expandArgsResults()
-{
-	SysListIter<Function> fncs(functions);
-	Function *f;
-
-	while (f = fncs++)
-	{
-		f->expand();
-		f->expandAllCalls();
-	}	
+	log.error("%ld: unexpected end of file inside function", tokens.last()->lineNum);
+	return NULL;
 }
 
 //---------------------------------------------------------------------------------------------
 
-
-BOOL Compiler::processChar(char c)
+bool Compiler::transform()
 {
-	if (c == 0x0A)
-	{
-		linenum++;
-		comment = FALSE;
-	}
-
-	if (c == 0x00)
-	{
-		Printf("Unexpected character NUL (0x00) in line %ld (binary file?).\n", linenum);
-		return FALSE;
-	}
-
-	if (comment) return TRUE;
-
-	if (c == '#')
-	{
-		comment = TRUE;
-		return TRUE;
-	}
-
-	if (!strmode)
-	{
-		if ((c == 0x22) || (c == 0x27))
-		{
-			if (bufpos > 0)
-			{
-				Printf("Missing space before string in line %ld.\n", linenum);
-				return FALSE;
-			}
-			else
-			{
-				strmode = c;
-				addChar(c);
-			}
-		}
-		else if (IsBracket(c))
-		{
-			flush();
-			addChar(c);
-			flush();
-		}
-		else if (IsSpace(c)) flush();
-		else addChar(c);
-	}
-	else
-	{
-		addChar(c);
-
-		if (c == strmode)
-		{
-			flush();
-			strmode = 0;
-		}
-	}
-
+	log.setModule("transformer");
+	
+	for (Function *f = functions.first(); f; f = f->next()) if (!(f->expand())) return FALSE;
+	for (Function *f = functions.first(); f; f = f->next())	f->expandAllCalls();
+	for (Function *f = functions.first(); f; f = f->next()) f->replaceAllPushPullBlocks();
+	
 	return TRUE;
 }
 
-/*-------------------------------------------------------------------------------------------*/
+//---------------------------------------------------------------------------------------------
 
-BOOL Compiler::addChar(char c)
+bool Compiler::optimize()
 {
-	if (!havetoken)
+	bool success = TRUE;
+
+	log.setModule("optimizer");
+		
+	for  (Function *f = functions.first(); f && success; f = f->next())
 	{
-		Token *t = new Token;
-
-		if (t)
-		{
-			t->linenum = linenum;
-			tokens.addtail(t);
-			havetoken = TRUE;
-			tokencount++;
-		}
-		else return FALSE;
+		Optimizer opt(f);
+		success = opt.optimizeFunction();
 	}
-
-	buf[bufpos++] = c;
-
-	if (bufpos >= 64)
-	{
-		tokens.last()->append(buf, 64);
-		bufpos = 0;
-	}
-
-	return TRUE;
+	
+	return success;
 }
 
-/*-------------------------------------------------------------------------------------------*/
+//---------------------------------------------------------------------------------------------
 
-BOOL Compiler::flush()
+bool Compiler::isFunction(const char *name)
 {
-	BOOL success = TRUE;
-
-	if (bufpos > 0)
-	{
-		success = tokens.last()->append(buf, bufpos);
-		bufpos = 0;
-	}
-
-	havetoken = FALSE;
+	return functions.find(name) ? TRUE : FALSE;
 }
 
-/*-------------------------------------------------------------------------------------------*/
+//---------------------------------------------------------------------------------------------
 
-void Compiler::optimizeCode()
+bool Compiler::isOperator(const char *name)
 {
-	Function *f;
-
-	for (f = functions.first(); f; f = functions.next(f)) f->optimize();
+	return operators.find(name) ? TRUE : FALSE;
 }
 
-/*-------------------------------------------------------------------------------------------*/
+//---------------------------------------------------------------------------------------------
+
+bool Compiler::isSysCall(const char *name)
+{
+	return sysCalls.find(name) ? TRUE : FALSE;
+}
+
+//---------------------------------------------------------------------------------------------
 
 void Compiler::dumpTokens()
 {
-	Token *t;
-
-	for (t = tokens.first(); t; t = t->next())
-	{
-		switch (t->type)
-		{
-			case MAKE_ID3('i','n','t'):
-				Printf("<%s> `%s` [%ld] = %ld\n", &t->type, t->text, t->textsize, t->intval);
-			break;
-			default:
-				Printf("<%s> `%s` [%ld]\n", &t->type, t->text, t->textsize);
-		}
-	} 
+	for (Token *t = tokens.first(); t; t = t->next()) t->print();
 }
 
-/*-------------------------------------------------------------------------------------------*/
+//---------------------------------------------------------------------------------------------
 
 void Compiler::dumpFunctions()
 {
-	Function *f;
-
-	for (f = functions.first(); f; f = functions.next(f)) f->print();
+	for (Function *f = functions.first(); f; f = f->next()) f->print();
 }
+//---------------------------------------------------------------------------------------------
 
-/*-------------------------------------------------------------------------------------------*/
-
-Token* Compiler::compileErr(Token *token, const char *msg)
+Function* Compiler::addFunction(const char *name, int line)
 {
-	Printf("Error in line %ld: '%s' %s.\n", token->linenum, token->text, msg);
+	if (Function *f = new Function(name, line))
+	{
+		if (f->parseSignature())
+		{
+			functions.addTail(f);
+			return f;
+		}
+	}
 	return NULL;
 }
 
-/*-------------------------------------------------------------------------------------------*/
+//---------------------------------------------------------------------------------------------
+// 7-character label, null terminated (minimum buffer size: 8 bytes)
 
-BOOL Compiler::generalErr(const char *msg)
+void Compiler::getUniqueLabel(char *label)
 {
-	Printf("Error: %s.\n", msg);
+	unsigned int x = uniqueSeed;
+	
+	for (int i = 0; i < 7; i++)
+	{
+		*label++ = (x & 0xF) + 'g';
+		x >>= 4;
+	}
+
+	*label = 0x00;
+	uniqueSeed += 0xF4243;	
+}
+
+//---------------------------------------------------------------------------------------------
+
+bool Compiler::addSysLibrary(const char* libname, int minver)
+{
+	LibraryToOpen *lib;
+	
+	lib = sysLibraries.find(libname);
+
+	if (!lib)
+	{
+		if (!(lib = new LibraryToOpen(libname, minver))) return FALSE;
+		sysLibraries.addTail(lib);
+	}
+
+	lib->bumpVersion(minver);
+	return TRUE;
+}
+
+//---------------------------------------------------------------------------------------------
+
+bool Compiler::generate(const char *inFileName, const char *outFileName)
+{
+	BPTR asmFile;
+	bool success = FALSE;
+	
+	log.setModule("generator");
+	
+	if (asmFile = Open(outFileName, MODE_NEWFILE))
+	{
+		//-----------------------------------
+		// add syscalls used in startup code
+		//-----------------------------------
+		
+		useSysCall("OpenLibrary", "exec.library", -552);
+		useSysCall("CloseLibrary", "exec.library", -414);
+		useSysCall("Forbid", "exec.library", -132);
+		useSysCall("FindTask", "exec.library", -294);
+		useSysCall("GetMsg", "exec.library", -372);
+		useSysCall("ReplyMsg", "exec.library", -378);
+		useSysCall("WaitPort", "exec.library", -384);
+		
+		FPrintf(asmFile, ";\n; Compiled with Bzted %s from %s.\n;\n\n", BZTVER, inFileName); 
+		generateLibOffsets(asmFile);
+		generateStartup(asmFile);
+		generateLibOpenClose(asmFile);
+		generateBss(asmFile);
+		Close(asmFile);
+		success = TRUE;	
+	}	
+	
+	return success;
+}
+
+//---------------------------------------------------------------------------------------------
+
+const char* Compiler::determineMainFunctionName()
+{
+	Function *main;
+
+	if (!(main = functions.find("Main")))
+	{
+		if (!(main = functions.find("main")))
+		{
+			main = functions.first();
+			log.warning("no Main() or main() function defined, program starts from %s()",
+			 main->name());			
+		}
+	}
+
+	return main->name();
+}
+
+//---------------------------------------------------------------------------------------------
+
+void Compiler::generateLibOffsets(BPTR asmFile)
+{
+	for (UsedSysCall *uc = usedSysCalls.first(); uc; uc = uc->next())
+	{
+		uc->generate(asmFile);
+	}
+	
+	FPuts(asmFile, "\n");
+}
+
+//---------------------------------------------------------------------------------------------
+
+void Compiler::generateStartup(BPTR asmFile)
+{
+	FPuts(asmFile,
+		"pr_CLI                  = 172\n"
+		"pr_MsgPort              = 92\n"
+		"\n_Start:\n"
+		"\t\tMOVEM.L\td2/d3/a2/a6,-(sp)\n"
+		"\t\tCLR.L\td2\n"
+		"\t\tSUBA.L\ta1,a1\n"
+		"\t\tMOVEA.L\t4,a6\n"
+		"\t\tJSR\tFindTask(a6)\n"
+		"\t\tMOVEA.L\td0,a2\n"
+		"\t\tTST.L\tpr_CLI(a2)\n"
+		"\t\tBNE.S\t.1\n"
+		"\t\tLEA\tpr_MsgPort(a2),a0\n"
+		"\t\tJSR\tWaitPort(a6)\n"
+		"\t\tLEA\tpr_MsgPort(a2),a0\n"
+		"\t\tJSR\tGetMsg(a6)\n"
+		"\t\tMOVE.L\td0,d2\n"
+		".1:\t\tBSR.S\tOpenLibs\n"
+		"\t\tBEQ.S\t.3\n"
+	);
+
+	FPrintf(asmFile, "\t\tJSR\t%s\n", determineMainFunctionName());
+
+	FPuts(asmFile,
+		".3:\t\tBSR.S\tCloseLibs\n"
+		"\t\tMOVE.L\td0,d3\n"
+		"\t\tTST.L\td2\n"
+		"\t\tBEQ.S\t.2\n"
+		"\t\tJSR\tForbid(a6)\n"
+		"\t\tMOVEA.L\td2,a1\n"
+		"\t\tJSR\tReplyMsg(a6)\n"
+		".2:\t\tMOVE.L\td3,d0\n"
+		"\t\tMOVEM.L\t(sp)+,d2/d3/a2/a6\n"
+		"\t\tRTS\n\n"
+	);
+}
+
+//---------------------------------------------------------------------------------------------
+
+void Compiler::generateLibOpenClose(BPTR asmFile)
+{
+	int libCounter = 0;
+	
+	FPuts(asmFile,
+		"OpenLibs:\n"
+		"\t\tMOVEM.L\ta2/d2,-(sp)\n"
+		"\t\tMOVEQ\t#1,d2\n"
+		"\t\tLEA\tLibData,a2\n"
+		".0:\t\tMOVE.L\t(a2)+,d0\n"
+		"\t\tBEQ.S\t.1\n"
+		"\t\tMOVEA.L\td0,a1\n"
+		"\t\tMOVE.L\t(a2)+,d0\n"
+		"\t\tJSR\tOpenLibrary(a6)\n"
+		"\t\tTST.L\td0\n"
+		"\t\tBEQ.S\t.2\n"
+		"\t\tMOVEA.L\t(a2)+,a0\n"
+		"\t\tMOVE.L\td0,(a0)\n"
+		"\t\tBRA.S\t.0\n"
+		".2:\t\tMOVEQ\t#0,d2\n"
+		".1:\t\tMOVE.L\td2,d0\n"		
+		"\t\tMOVEM.L\t(sp)+,a2/d2\n"
+		"\t\tRTS\n\n");
+
+	FPuts(asmFile,
+		"CloseLibs:\n"
+		"\t\tMOVE.L\ta2,-(sp)\n"
+		"\t\tLEA\tLibData,a2\n"
+		".0:\t\tTST.L\t(a2)\n"
+		"\t\tBEQ.S\t.1\n"
+		"\t\tMOVEA.L\t8(a2),a0\n"
+		"\t\tMOVE.L\t(a0),d0\n"
+		"\t\tBEQ.S\t.2\n"
+		"\t\tMOVEA.L\td0,a1\n"
+		"\t\tJSR\tCloseLibrary(a6)\n"
+		".2:\t\tLEA\t12(a2),a2\n"
+		"\t\tBRA.S\t.0\n"
+		".1:\t\tMOVEA.L\t(sp)+,a2\n"
+		"\t\tRTS\n\n");
+	
+	FPuts(asmFile, "LibData:\n");
+
+	for (LibraryToOpen *lib = sysLibraries.first(); lib; lib = lib->next())
+	{
+		FPrintf(asmFile, "\t\tDC.L\tlibname%ld,%ld,%s\n", libCounter++, lib->getVersion(),
+		 lib->getBase());
+	}	
+	
+	FPuts(asmFile, "\t\tDC.L\t0\n");
+
+	libCounter = 0;
+	
+	for (LibraryToOpen *lib = sysLibraries.first(); lib; lib = lib->next())
+	{
+		const char *pad = "";
+		if ((StrLen(lib->name) & 1) == 0) pad = ",0";
+		FPrintf(asmFile, "libname%ld:\n\t\tDC.B\t\"%s\",0%s\n", libCounter++, lib->name, pad);
+	}	
+
+}
+
+//---------------------------------------------------------------------------------------------
+
+void Compiler::generateBss(BPTR asmFile)
+{
+	FPuts(asmFile, "\n\t\tbss\n\n");
+
+	//---------------------------
+	// bases of system libraries
+	//---------------------------
+	
+	for (LibraryToOpen *lib = sysLibraries.first(); lib; lib = lib->next())
+	{
+		FPrintf(asmFile, "%s:\n\t\tDS.L\t1\n", lib->getBase());
+	}
+	
+	//-------------
+	// data frames
+	//-------------
+	
+	for (DataFrame *df = dataFrames.first(); df; df = df->next())
+	{
+		FPrintf(asmFile, "%s:\n\t\tDS.L\t%ld\n", df->label, df->size);
+	}
+}
+
+//---------------------------------------------------------------------------------------------
+
+bool Compiler::useSysCall(const char *callName, const char *libName, int offset)
+{
+	UsedSysCall *uc;
+	
+	uc = usedSysCalls.find(callName);
+	if (uc) return TRUE;
+	uc = new UsedSysCall(callName, libName, offset);
+	if (!uc) return FALSE;
+	usedSysCalls.addTail(uc);
+	return TRUE;
+}
+
+//---------------------------------------------------------------------------------------------
+
+const char* Compiler::addDataFrame(int size)
+{
+	if (char *label = new char[8])
+	{
+		getUniqueLabel(label);
+
+		if (DataFrame *df = new DataFrame(label, size))
+		{
+			dataFrames.addTail(df);
+			return label;
+		}
+
+		delete label;
+	}
+
 	return FALSE;
 }

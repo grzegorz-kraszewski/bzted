@@ -1,51 +1,87 @@
 #include "main.h"
+#include "rplist.h"
+#include "keyedarray.h"
 #include "token.h"
 #include "function.h"
 #include "builtins.h"
+#include "syscalls.h"
+
+class UsedSysCall : public RpNamedNode<UsedSysCall>
+{
+	public:
+	
+	const char *libName;
+	int offset;
+	
+	UsedSysCall(const char *cn, const char *ln, int off) : RpNamedNode<UsedSysCall>(cn)
+	{
+		libName = ln;
+		offset = off;
+	}
+	
+	void generate(BPTR file);
+};
+
+
+class DataFrame : public RpNode<DataFrame>
+{
+	public:
+
+	const char *label;
+	int size;
+	DataFrame(const char *l, int s) { label = l; size = s; }
+};
+
 
 class Compiler
 {
-	SysList<Token> tokens;
-	SysList<InterInstruction> intercode;
-	char buf[64];
-	int linenum;
-	int bufpos;
-	int tokencount;
-	BOOL havetoken;
-	BOOL comment;
-	char strmode;
-
-	BOOL processChar(char c);
-	BOOL addChar(char c);
-	BOOL flush();
+	RpList<Token> tokens;
+	RpNamedList<Function> functions;
+	KeyedArray<Operator> operators;
+	KeyedArray<SysCall> sysCalls;
+	KeyedArray<const char*> libraryBases;
+	RpKeyedList<LibraryToOpen> sysLibraries;
+	RpNamedList<UsedSysCall> usedSysCalls;
+	RpList<DataFrame> dataFrames;
+	unsigned int uniqueSeed;
+	bool transResult;
+	
+	Token* translateDefinition(Token *t);
+	Token* translateCodeBlock(Token *t, Function *f);
+	void generateLibOffsets(BPTR asmFile);
+	void generateStartup(BPTR asmFile);
+	void generateLibOpenClose(BPTR asmFile);
+	void generateBss(BPTR asmFile);
+	const char* determineMainFunctionName();
 
 	public:
 
-	KeyedSysList<Function> functions;
-	KeyedArray<Operator> operators;
-
 	Compiler()
 	{
-		linenum = 1;
-		bufpos = 0;
-		tokencount = 0;
-		havetoken = FALSE;
-		comment = FALSE;
-		strmode = 0;
-		operators.fetch(BuiltIns, 11);
+		operators.fetch(BuiltIns, 17);
+		sysCalls.fetch(SysCalls, 23); 
+		libraryBases.fetch(BaseNames, 3);
+		uniqueSeed = 0x000F4243;
 	}
 
-	void scan(char *filename);
-	void lex();
-	void grabDefinitions();
-	void updateIdentifiers();
-	void expandArgsResults();
-	void compileCode();
-	Token* compileFunction(Token *t, Function *f);
-	Token* compileDefinition(Token *t);
-	void optimizeCode();
+	bool scan(const char *fileName);
+	bool lex();
+	bool translate();
+	bool transform();
+	bool optimize();
+	bool generate(const char *inFileName, const char *outFileName);
 	void dumpTokens();
 	void dumpFunctions();
-	BOOL generalErr(const char *msg);
-	Token* compileErr(Token *token, const char *msg);
+	bool isFunction(const char *name);
+	bool isOperator(const char *name);
+	bool isSysCall(const char *name);
+	Function* addFunction(const char *name, int line);
+	Operator* findOperator(const char *name) { return operators.find(name); }
+	Function* findFunction(const char *name) { return functions.find(name); }
+	SysCall* findSysCall(const char *name) { return sysCalls.find(name); }
+	void getUniqueLabel(char *label);
+	bool addSysLibrary(const char *libname, int minver);
+	bool useSysCall(const char *cn, const char *ln, int off);
+	const char* getLibraryBaseName(const char *libname) { return *libraryBases.find(libname); }
+	const char* addDataFrame(int size);
 };

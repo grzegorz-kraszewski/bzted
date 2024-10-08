@@ -1,9 +1,8 @@
 #include "compiler.h"
+#include "logger.h"
 
 #include <proto/exec.h>
 #include <proto/dos.h>
-
-extern Compiler *Comp;
 
 
 const char LastChar(const char *s)
@@ -15,22 +14,22 @@ const char LastChar(const char *s)
 
 /*-------------------------------------------------------------------------------------------*/
 
-BOOL Token::append(char *buf, LONG len)
+bool Token::append(char *buf, LONG len)
 {
-	int newsize = textsize + len;
+	int newsize = textSize + len;
 	char *newtext = new char[newsize + 1];
 
 	if (newtext)
 	{
 		if (text)
 		{
-			CopyMem(text, newtext, textsize);
+			CopyMem(text, newtext, textSize);
 			delete text;
 		}
 
-		CopyMem(buf, newtext + textsize, len);
-		newtext[textsize + len] = 0x00;
-		textsize = newsize;
+		CopyMem(buf, newtext + textSize, len);
+		newtext[textSize + len] = 0x00;
+		textSize = newsize;
 		text = newtext;
 		return TRUE;
 	}
@@ -40,7 +39,7 @@ BOOL Token::append(char *buf, LONG len)
 
 /*-------------------------------------------------------------------------------------------*/
 
-BOOL Token::parseDecNumber()
+bool Token::parseDecNumber()
 {
 	LONG val = 0;
 	BOOL leadzero = TRUE;
@@ -55,7 +54,11 @@ BOOL Token::parseDecNumber()
 		if (leadzero && (c == '0')) continue;
 		else leadzero = FALSE;
 		if ((c >= '0') && (c <= '9')) c -= '0';
-		else FAIL("Unexpected character in decimal number");
+		else
+		{
+			log.error("%ld: '%s', unexpected character in decimal number", lineNum, text);
+			return FALSE;
+		}
 
 		if (positive)
 		{
@@ -64,7 +67,11 @@ BOOL Token::parseDecNumber()
 				val *= 10;
 				val += c;
 			}
-			else FAIL("Decimal number out of 32-bit range");
+			else
+			{
+				log.error("%ld: '%s', decimal number out of 32-bit range", lineNum, text);
+				return FALSE;
+			}
 		}
 		else
 		{
@@ -73,25 +80,33 @@ BOOL Token::parseDecNumber()
 				val *= 10;
 				val -= c;
 			}
-			else FAIL("Decimal number out of 32-bit range");
+			else
+			{
+				log.error("%ld: '%s', decimal number out of 32-bit range", lineNum, text);
+				return FALSE;
+			}
 		}
 	}
 
-	intval = val;
-	type = MAKE_ID3('i','n','t');
+	intValue = val;
+	type = TT_INT;
 	return TRUE;
 }
 
 /*-------------------------------------------------------------------------------------------*/
 
-BOOL Token::parseHexNumber()
+bool Token::parseHexNumber()
 {
 	LONG val = 0;
 	WORD digit = 0;
 	BOOL leadzero = TRUE;
 	char c, *p = text + 1;      // skip '$' prefix
 
-	if (!*p) FAIL("No hexadecimal digits after '$' prefix");
+	if (!(*p))
+	{
+		log.error("%ld: '%s', no hexadecimal digits after '$' prefix", lineNum, text);
+		return FALSE;
+	}
 
 	while ((c = *p++) && (digit < 8))
 	{
@@ -101,28 +116,41 @@ BOOL Token::parseHexNumber()
 		if ((c >= '0') && (c <= '9')) c -= '0';
 		else if ((c >= 'A') && (c <= 'F')) c -= 55;
 		else if ((c >= 'a') && (c <= 'f')) c -= 87;
-		else FAIL("Unexpected character in hexadecimal number");
+		else
+		{
+			log.error("%ld: '%s', unexpected character in hexadecimal number", lineNum, text);
+			return FALSE;
+		}
+
 		val += c;
 		digit++;			
 	};
 
-	if (c) FAIL("Hexadecimal number too big");
+	if (c)
+	{
+		log.error("%ld: '%s', hexadecimal number too big for 32 bits", lineNum, text);
+		return FALSE;
+	}
 
-	intval = val;
-	type = MAKE_ID3('i','n','t');
+	intValue = val;
+	type = TT_INT;
 	return TRUE;
 }
 
 /*-------------------------------------------------------------------------------------------*/
 
-BOOL Token::parseBinNumber()
+bool Token::parseBinNumber()
 {
 	LONG val = 0;
 	WORD digit = 0;
 	BOOL leadzero = TRUE;
 	char c, *p = text + 1;      // skip '%' prefix
 
-	if (!*p) FAIL("No binary digits after '%' prefix");
+	if (!(*p))
+	{
+		log.error("%ld: '%s', no binary digits after '%' prefix", lineNum, text);
+		return FALSE;
+	}
 
 	while ((c = *p++) && (digit < 32))
 	{
@@ -130,20 +158,29 @@ BOOL Token::parseBinNumber()
 		else leadzero = FALSE;
 		val <<= 1;
 		if (c == '1') val |= 1;
-		else if (c != '0') FAIL("Unexpected character in binary number");
+		else if (c != '0')
+		{
+			log.error("%ld: '%s', unexpected character in binary number", lineNum, text);
+			return FALSE;
+		}
+
 		digit++;			
 	};
 
-	if (c) FAIL("Binary number too big");
+	if (c)
+	{
+		log.error("%ld: '%s', binary number too big for 32 bits", lineNum, text);
+		return FALSE;
+	}
 
-	intval = val;
-	type = MAKE_ID3('i','n','t');
+	intValue = val;
+	type = TT_INT;
 	return TRUE;
 }
 
 /*-------------------------------------------------------------------------------------------*/
 
-BOOL Token::parseString()
+bool Token::parseString()
 {
 	char *p = text;
 	char delimiter = *p;
@@ -151,38 +188,25 @@ BOOL Token::parseString()
 
 	while (*m != delimiter) *p++ = *m++;
 	*p = 0x00;
-	textsize -= 2;
+	textSize -= 2;
 
-	type = MAKE_ID3('s','t','r');
+	type = TT_STR;
 	return TRUE;
 }
 
 /*-------------------------------------------------------------------------------------------*/
 
-BOOL Token::parseIdentifier()
+bool Token::parseIdentifier()
 {
-	Operator *op;
-	Function *fu;
-
-	// user functions can redefine operators
-	//--------------------------------------
-
-    if (fu = Comp->functions.find(text))
-	{
-		type = TT_FNC;	
-	}
-
 	// Operators before definitions, so operator ':' 
 	// is not taken as definition with empty name.
 	//-----------------------------------------------
 
-	if (op = Comp->operators.find(text))
-	{
-		type = TT_OPR;
-		return TRUE;
-	}
+	if (Comp->isOperator(text)) { type = TT_OPR; return TRUE; }
 
 	if (LastChar(text) == ':') return parseDefinition();
+	
+	if (Comp->isSysCall(text)) { type = TT_SYS; return TRUE; }
 
 	type = TT_IDN;
 	return TRUE;
@@ -190,28 +214,28 @@ BOOL Token::parseIdentifier()
 
 /*-------------------------------------------------------------------------------------------*/
 
-BOOL Token::parseDefinition()
+bool Token::parseDefinition()
 {
 	char *p = text;
 
 	while (*p) p++;
 	*--p = 0x00;
-	textsize -= 1;
+	textSize -= 1;
 	type = TT_DEF;
 	return TRUE;
 }
 
 /*-------------------------------------------------------------------------------------------*/
 
-BOOL Token::compile(Function *function)
+bool Token::translate(Function *function)
 {
 	BOOL success = TRUE;
 	switch (type)
 	{
 		case TT_INT:
 		{
-			Operand op1 = { IIOP_IMMEDIATE, intval };
-			Operand op2 = { IIOP_REGISTER, II_D + 0 };
+			Operand op1(IIOP_IMMEDIATE, intValue);
+			Operand op2(IIOP_VIRTUAL, 0);
 			InterInstruction *ii0 = new InterInstruction(II_MOVE, op1, op2);
 			InterInstruction *ii1 = new InterInstruction(II_DROP, op2);
 
@@ -225,27 +249,44 @@ BOOL Token::compile(Function *function)
 		break;
 
 		case TT_OPR:
-			success = Comp->operators.find(text)->generator(function);
+			success = Comp->findOperator(text)->generator(function);
 		break;
 
 		case TT_FNC:
 		{
-			InterInstruction *ii = new InterInstruction(II_JSBR, text);
+			Operand op(IIOP_LABEL, (int)text);
+			InterInstruction *ii = new InterInstruction(II_JSBR, op);
 			if (ii) function->addCode(ii);
 			else success = FALSE;
 		}
 		break;
+		
+		case TT_SYS:
+		{
+			success = GenerateSysCall(text, function);
+		}
+		break;
 
 		default:
+			log.error("%ld: unknown token '%s'", lineNum, text);
 			success = FALSE;		
 	}
 
 	return success;
 }
 
-/*-------------------------------------------------------------------------------------------*/
+//---------------------------------------------------------------------------------------------
 
-void Token::error(char *msg)
+void Token::print()
 {
-	Printf("%s in line %ld.\n", msg, linenum);
+	switch (type)
+	{
+		case TT_INT:
+			Printf("<%s> `%s` [%ld] = %ld\n", &type, text, textSize, intValue);
+		break;
+
+		default:
+			Printf("<%s> `%s` [%ld]\n", &type, text, textSize);
+	} 
 }
+

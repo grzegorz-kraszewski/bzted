@@ -3,8 +3,11 @@
 #ifndef BZTED_FUNCTION_H
 #define BZTED_FUNCTION_H
 
-#include "syslist.h"
+#include "rplist.h"
 #include "inter.h"
+
+
+class Optimizer;
 
 
 struct PushPullBlock
@@ -13,55 +16,47 @@ struct PushPullBlock
 	InterInstruction *pull;
 };
 
-struct RegisterUsage
+
+class Function : public RpNamedNode<Function>
 {
-	int reg;
-	int usage;
-};
+	friend class Optimizer;
 
-
-class Function
-{
-	public:
-
-	Function *succ;
-	Function *pred;
-	const char *name;
-
-	Function(const char *fname) { name = fname; }
-	void addCode(InterInstruction *ii) { code.addtail(ii); }
-	void stackSignature();
-	void expand();
-	void expandCall(InterInstruction *ii);
-	void expandAllCalls();
-	void print();
-
-	/* optimizer */
-
-	void updateRegisterUsage(RegisterUsage *regarray, int count, InterInstruction *instr);
-    void registerUsageOverBlock(RegisterUsage *regarray, int count, InterInstruction *start,
-		InterInstruction *end);
-	InterInstruction* findPushPullBlock(PushPullBlock &ppblock, InterInstruction *ii);
-	int optimizePushPullBlock(PushPullBlock &ppblock);
-	int optimizeAllPushPullBlocks();
-	void optimizeMovesToSelf();
-	InterInstruction* findMoveCascade();
-	void optimizeMoveCascades();
-	InterInstruction* findMoveToDyadic();
-	void optimizeMovesToDyadic();
-
-
-	BOOL optimize();
-
-	private:
-
-	SysList<InterInstruction> code;
+	RpList<InterInstruction> code;
 	int numArguments;
 	int numResults;
+	const char *argumentTypes;
+	const char *resultTypes;
+	int maxStackDepth;
+	int firstFreeRegister;
+	bool resultsToFrame;
+	int frameSize;
+	int lineNum;
+	
+	bool expandCall(InterInstruction *ii);
+	bool expandSysCall(InterInstruction *call);
+	InterInstruction* findPushPullBlock(PushPullBlock &ppblock);
+	void replacePushPullBlock(PushPullBlock &ppblock);
+	
+	public:
 
-//	LONG flags;
-//	const FuncPin *inputs;
-//	const FuncPin *outputs;
+	Function(const char *name, int line) : RpNamedNode<Function>(name)
+	{
+		resultsToFrame = 0;
+		numArguments = 0;
+		numResults = 0;
+		lineNum = line;
+	}
+	
+	bool parseSignature();
+	void setResultMode(bool mode) { resultsToFrame = mode; }
+	bool toFrame() { return resultsToFrame; }
+	int getFrameSize() { return frameSize; }
+	void addCode(InterInstruction *ii) { code.addTail(ii); }
+	void stackSignature();
+	bool expand();
+	void expandAllCalls();
+	int replaceAllPushPullBlocks();
+	void print();
 };
 
 #endif  /* BZTED_FUNCTION_H */

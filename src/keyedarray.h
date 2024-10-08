@@ -1,10 +1,10 @@
 /* KeyedArray is an array of KeyedPairs + binary search */
 
+#ifndef BZTED_KEYEDARRAY_H
+#define BZTED_KEYEDARRAY_H
 
-#include <exec/types.h>
+#include "strutils.h"
 
-
-extern int StrCmp(const char *a, const char *b);
 
 template <class T>
 struct KeyedPair
@@ -12,6 +12,7 @@ struct KeyedPair
 	const char* key;
 	T value;
 };
+
 
 template <class T>
 class KeyedArray
@@ -43,3 +44,5 @@ T* KeyedArray<T>::find(const char *name)
 
 	return NULL;
 }
+
+#endif  /* BZTED_KEYEDARRAY_H */

@@ -2,75 +2,67 @@
 // intermediate code optimizer
 //-----------------------------
 
-// Curently all optimizer functions are methods of Function class, but have been placed in
-// a separate file.
-
-#include "main.h"
+#include "optimizer.h"
 #include "function.h"
+#include "main.h"
+#include "scheduler.h"
+#include "logger.h"
 
-#define REGU_NONE 0
-#define REGU_SRC  1
-#define REGU_DEST 2
-#define REGU_BOTH (REGU_SRC | REGU_DEST)
-
-
+#include <proto/dos.h>
 
 
-void Function::updateRegisterUsage(RegisterUsage *regarray, int count, InterInstruction *instr)
+//---------------------------------------------------------------------------------------------
+
+void Edge::print()
 {
-	int i;
+	char buf[24];
 
-	for (i = 0; i < count; i++)
-	{
-		if ((instr->arg.type == IIOP_REGISTER) && (instr->arg.value == regarray[i].reg))
-		{
-			regarray[i].usage |= REGU_SRC;
-		}
-
-		if ((instr->out.type == IIOP_REGISTER) && (instr->out.value == regarray[i].reg))
-		{
-			if ((instr->code == II_MOVE) || (instr->code == II_COPY)) regarray[i].usage |= REGU_DEST;
-			else regarray[i].usage |= REGU_BOTH;
-		}
-	}
+	Printf("Edge %ld, range [%ld, %ld] operand %s.\n", eIndex, startInstruction, endInstruction,
+		tip.makeString(buf));
 }
 
 //---------------------------------------------------------------------------------------------
-// For registers specified in RegisterUsage array, scans code block between 'start' to 'end',
-// both excluded. Determines usage of specified registers in the block. The function assumes
-// that both 'start' and 'end' are on the code list, 'start' before 'end'.
 
-void Function::registerUsageOverBlock(RegisterUsage *regarray, int count, InterInstruction
-	*start,	InterInstruction *end)
+void Optimizer::dumpEdges()
 {
-	for(start = code.next(start); start != end; start = code.next(start))
-	{
-		updateRegisterUsage(regarray, count, start);
-	}	
+	PutStr("---- edges ----\n");
+	for (Edge *e = edges.first(); e; e = e->next()) e->print();
+	PutStr("----------------\n");
 }
 
+//---------------------------------------------------------------------------------------------
 
-InterInstruction* Function::findPushPullBlock(PushPullBlock &ppblock, InterInstruction *ii)
+bool Optimizer::optimizeFunction()
 {
-	ppblock.push = NULL;
-	ppblock.pull = NULL;
+	bool success = FALSE;
+	
+	Printf("optimizing %s().\n", f->name());
+	convertToEdges();
+	f->print();
+	fuseImmediateOperands();
+	f->print();
+	assignRegistersToArguments();
+	f->print();
+	updateEdgesIntervals();
+	dumpEdges();
 
-	while (ii)
+	if (success = allocateRegisters())
 	{
-		if (ii->code == II_PULL)
-		{
-			if (ppblock.push)
-			{
-				ppblock.pull = ii;
-				return code.next(ii);
-			}
-		}
-		else if ((ii->code == II_DROP) || (ii->code == II_PUSH))
-		{
-			ppblock.push = ii;
-		}
+		dumpEdges();
+		applyRegistersToCode();
+		killRedundantMoves();
+	}
+		
+	return success;
+}
 
-		ii = code.next(ii);
+//---------------------------------------------------------------------------------------------
+
+Edge* Optimizer::findEdgeByTip(Operand &op)
+{
+	for (Edge *e = edges.first(); e; e = e->next())
+	{
+		if (e->tipIs(op)) return e;
 	}
 
 	return NULL;
@@ -78,187 +70,316 @@ InterInstruction* Function::findPushPullBlock(PushPullBlock &ppblock, InterInstr
 
 //---------------------------------------------------------------------------------------------
 
-int Function::optimizePushPullBlock(PushPullBlock &ppblock)
+Edge* Optimizer::findEdgeByIndex(int index)
 {
-	RegisterUsage regusage[2];
-
-	regusage[0].reg = ppblock.push->out.value;   /* PUSH|PULL|DROP always have register operand */
-	regusage[0].usage = REGU_NONE;
-	regusage[1].reg = ppblock.pull->out.value;
-	regusage[1].usage = REGU_NONE;
-
-	registerUsageOverBlock(regusage, 2, ppblock.push, ppblock.pull);
-
-	Printf("optimizer: register usage [d%ld: %ld, d%ld: %ld].\n", 
-		regusage[0].reg - 1, regusage[0].usage, regusage[1].reg - 1, regusage[1].usage);
-
-	if ((regusage[0].usage == REGU_NONE) && (regusage[1].usage == REGU_NONE))
+	for (Edge *e = edges.first(); e; e = e->next())
 	{
-		int newop = (ppblock.push->code == II_DROP) ? II_MOVE : II_COPY;
-		ppblock.push->code = newop;
-		ppblock.push->arg.type = IIOP_REGISTER;
-		ppblock.push->arg.value = regusage[0].reg;
-		ppblock.push->out.type = IIOP_REGISTER;
-		ppblock.push->out.value = regusage[1].reg;				
-		code.remove(ppblock.pull);
-		PutStr("eliminated.\n");
-		return 1;
-	}			
-
-	return 0;
-}
-
-//---------------------------------------------------------------------------------------------
-
-int Function::optimizeAllPushPullBlocks()
-{
-	int optimizedBlocks = 0;
-	InterInstruction *ii = code.first();
-	PushPullBlock ppblock;
-
-	while (ii = findPushPullBlock(ppblock, ii))
-	{
-		PutStr("optimizer: PUSH|DROP - PULL block:\n");
-		ppblock.push->print();
-		ppblock.pull->print(); 
-		optimizedBlocks += optimizePushPullBlock(ppblock);
+		if (e->index() == index) return e;
 	}
 
-	return optimizedBlocks;
+	return NULL;
 }
 
 //---------------------------------------------------------------------------------------------
 
-void Function::optimizeMovesToSelf()
+Edge* Optimizer::addEdge(Operand &start)
 {
-	InterInstruction *ii;
+	Edge *e;
 
-	for (ii = code.first(); ii; ii = code.next(ii))
+	if (e = new Edge(edgeCount, start))
 	{
-		if ((ii->code == II_MOVE) || (ii->code == II_COPY))
+		edgeCount++;
+		edges.addTail(e);
+	}
+
+	return e;
+}
+
+
+//---------------------------------------------------------------------------------------------
+// At least one of MOVE operands is a virtual register.
+
+void Optimizer::convertMoveToEdges(InterInstruction *ii)
+{
+	if (ii->out.type == IIOP_VIRTUAL)
+	{
+		switch (ii->arg.type)
 		{
-			if ((ii->arg.type == IIOP_REGISTER) && (ii->out.type == IIOP_REGISTER))
-			{
-				if (ii->arg.value == ii->out.value)
+			case IIOP_FARGUMENT:
+			case IIOP_CRESULT:
+			case IIOP_ADDRREG:
+			case IIOP_DATAREG:
+				if (Edge *e = addEdge(ii->out))
 				{
-					PutStr("optimizer: MOVE|COPY to self:\n");
-					ii->print();
-					PutStr("eliminated.\n");
-					code.remove(ii);
+					ii->out.type = IIOP_EDGE;
+					ii->out.value = e->index();
 				}
-			}
+			break;
+
+			case IIOP_VIRTUAL:
+				if (Edge *e = findEdgeByTip(ii->arg))
+				{
+					e->advanceTo(ii->out);
+					ii->remove();
+				}
+			break;
+		}
+	}
+	else if (ii->arg.type == IIOP_VIRTUAL)
+	{
+		switch (ii->out.type)
+		{
+			case IIOP_FRESULT:
+			case IIOP_CARGUMENT:
+			case IIOP_FRAME:
+			case IIOP_ADDRREG:
+			case IIOP_DATAREG:
+				if (Edge *e = findEdgeByTip(ii->arg))
+				{
+					ii->arg.type = IIOP_EDGE;
+					ii->arg.value = e->index();
+					e->terminate();
+				}
+			break;
 		}
 	}
 }
 
 //---------------------------------------------------------------------------------------------
+// DMOV moves external data to virtual register.
 
-InterInstruction* Function::findMoveCascade()
+void Optimizer::convertDmovToEdges(InterInstruction *ii)
 {
-	InterInstruction *ii, *iia;
+	switch (ii->arg.type)
+	{
+		case IIOP_IMMEDIATE:
+			if (Edge *e = addEdge(ii->out))
+			{
+				ii->out.type = IIOP_EDGE;
+				ii->out.value = e->index();
+			}
+			break;
+		}
+	}
 
-	for (ii = code.first(); ii; ii = code.next(ii))
+
+//---------------------------------------------------------------------------------------------
+// COPY is always from virtual register to virtual register. It creates a new edge with tip at
+// destination operand.
+
+void Optimizer::convertCopyToEdges(InterInstruction *ii)
+{
+	if (Edge *e1 = findEdgeByTip(ii->arg))
+	{
+		if (Edge *e2 = addEdge(ii->out))
+		{
+			ii->arg.type = IIOP_EDGE;
+			ii->arg.value = e1->index();
+			ii->out.type = IIOP_EDGE;
+			ii->out.value = e2->index();
+		}
+	}
+}
+
+//---------------------------------------------------------------------------------------------
+// Dyadic operation operands are always virtual registers. First operand edge is terminated.
+// Second operand edge is continued.
+
+void Optimizer::convertDyadicToEdges(InterInstruction *ii)
+{
+	Edge *side, *thru;
+
+	side = findEdgeByTip(ii->arg);
+	thru = findEdgeByTip(ii->out);
+
+	if (side && thru)
+	{
+		ii->arg.type = IIOP_EDGE;
+		ii->arg.value = side->index();
+		side->terminate();
+		ii->out.type = IIOP_EDGE;
+		ii->out.value = thru->index();
+	}
+}
+
+//---------------------------------------------------------------------------------------------
+
+void Optimizer::convertToEdges()
+{
+	for (InterInstruction *ii = f->code.first(); ii; ii = ii->next())
+	{
+		switch (ii->code)
+		{
+			case II_MOVE: convertMoveToEdges(ii); break;
+			case II_DMOV: convertDmovToEdges(ii); break;
+			case II_COPY: convertCopyToEdges(ii); break;
+			case II_ADDL:
+			case II_SUBL: convertDyadicToEdges(ii); break; 
+		}
+	}
+}
+
+//---------------------------------------------------------------------------------------------
+// Function iterares through instruction list. If it finds a DMOV with immediate source operand
+// and edge destination, it follows the edge. If the edge ends at a source operand of a dyadic
+// operation, immediate operand is fused to it. DMOV is removed, edge is removed too.
+
+void Optimizer::fuseImmediateOperands()
+{
+	for (InterInstruction *ii = f->code.first(); ii; ii = ii->next())
+	{
+		if ((ii->code == II_DMOV) && (ii->arg.type == IIOP_IMMEDIATE) && (ii->out.type = IIOP_EDGE))
+		{
+			for (InterInstruction *ij = ii->next(); ij; ij = ij->next())
+			{
+				if (ij->isDyadic() && (ij->arg == ii->out))
+				{
+					ij->arg = ii->arg;
+					ii->remove();
+					findEdgeByIndex(ii->out.value)->remove();
+				}
+			}
+		}
+	}
+} 
+
+//---------------------------------------------------------------------------------------------
+// m68k register assignment for function arguments and results. For now it is very simple.
+// Fa0/Ca0 is assigned to d0, Fa1/Ca1 to d1... If there are more than 8 arguments, pseudo-
+// registers from d8 are used. They are stored in memory, and addressed via a5 ('d8' is 0(a5),
+// 'd9' is 4(a5) and so on). Results (Fr/Cr) are assigned in the same way. 
+
+void Optimizer::assignRegistersToArguments()
+{
+	for (InterInstruction *ii = f->code.first(); ii; ii = ii->next())
 	{
 		if (ii->code == II_MOVE)
 		{
-			if (iia = code.next(ii))
+			if ((ii->arg.type == IIOP_FARGUMENT) || (ii->arg.type == IIOP_CRESULT))
 			{
-				if (iia->code == II_MOVE)
-				{
-					if ((ii->out.type == IIOP_REGISTER) && (iia->arg.type = IIOP_REGISTER))
-					{
-						if (ii->out.value == iia->arg.value)
-						{
-							PutStr("optimizer: move cascade:\n");
-							ii->print();
-							iia->print();
-							return ii;
-						}
-					}
-				}
+				if (ii->arg.value < 8) ii->arg.type = IIOP_DATAREG;
+				else ii->arg.type = IIOP_MEMREG;
+			}
+			else if ((ii->out.type == IIOP_CARGUMENT) || (ii->out.type == IIOP_FRESULT))
+			{
+				if (ii->out.value < 8) ii->out.type = IIOP_DATAREG;
+				else ii->out.type = IIOP_MEMREG;
 			}
 		}
-	}
-
-	return NULL;	
+ 	}
 }
 
 //---------------------------------------------------------------------------------------------
 
-void Function::optimizeMoveCascades()
+void Optimizer::updateEdgesIntervals()
 {
-	InterInstruction *ii, *iia;
+	int iCounter = 0;
 
-	while (ii = findMoveCascade())
+	for (InterInstruction *ii = f->code.first(); ii; ii = ii->next())
 	{
-		iia = code.next(ii);               /* findMoveCascade() made sure it exists */
-		ii->out.value = iia->out.value;
-		code.remove(iia);
-		PutStr("eliminated.\n");
+		switch (ii->code)
+		{
+			case II_DMOV:
+			case II_MOVE:
+			{
+				if (ii->out.type == IIOP_EDGE) findEdgeByIndex(ii->out.value)->intervalStart(iCounter);
+				if (ii->arg.type == IIOP_EDGE) findEdgeByIndex(ii->arg.value)->intervalEnd(iCounter);
+			}
+			break;
+
+			case II_COPY:
+			{
+				if (ii->out.type == IIOP_EDGE) findEdgeByIndex(ii->out.value)->intervalStart(iCounter);
+			}
+			break;
+
+			default:
+			{
+				if (ii->isDyadic()) findEdgeByIndex(ii->arg.value)->intervalEnd(iCounter);
+			}
+		}
+
+		iCounter++;
+	}
+}
+
+//---------------------------------------------------------------------------------------------
+// Currently allocator uses "first free" algorithm. It is known to be optimal for interval
+// graphs. However it ignores boundary conditions (edges starting or ending at fixed
+// registers). The edge list is already sorted by interval start, so it may be used directly.
+// The code assumes that only one edge can start at given instruction.
+
+bool Optimizer::allocateRegisters()
+{
+	Scheduler dataRegisters;
+	Edge *edge = edges.first();
+	int iCounter = 0;
+
+	if (dataRegisters.start(32))
+	{
+		while (edge)
+		{
+			if (edge->getStart() == iCounter)
+			{
+				int dataRegister;
+				
+				dataRegister = dataRegisters.useFirstFor(edge->getEnd() - edge->getStart());
+
+				if (dataRegister >= 0)
+				{
+					Operand tip(IIOP_DATAREG, dataRegister);
+					edge->advanceTo(tip);
+				}
+				else
+				{
+					log.error("more than 32 registers used in %s(), compiler limit reached",
+					 f->name());
+					return FALSE;
+				}
+				
+				edge = edge->next();
+			}
+
+			dataRegisters.tick();
+			iCounter++;	
+		}
+		
+		return TRUE;
+	}
+	else return FALSE;	
+}
+
+//---------------------------------------------------------------------------------------------
+
+void Optimizer::applyRegistersToCode()
+{
+	Edge *e;
+	
+	for (InterInstruction *ii = f->code.first(); ii; ii = ii->next())
+	{
+		if (ii->arg.type == IIOP_EDGE)
+		{
+			e = findEdgeByIndex(ii->arg.value);
+			ii->arg = e->getTip();
+		}
+		
+		if (ii->out.type == IIOP_EDGE)
+		{
+			e = findEdgeByIndex(ii->out.value);
+			ii->out = e->getTip();
+		}
 	}
 }
 
 //---------------------------------------------------------------------------------------------
 
-InterInstruction* Function::findMoveToDyadic()
+void Optimizer::killRedundantMoves()
 {
-	InterInstruction *ii, *iia;
-
-	for (ii = code.first(); ii; ii = code.next(ii))
+	for (InterInstruction *ii = f->code.first(); ii; ii = ii->next())
 	{
 		if ((ii->code == II_MOVE) || (ii->code == II_COPY))
 		{
-			if (iia = code.next(ii))
-			{
-				if (iia->isDyadic())
-				{
-					if ((ii->out.type == IIOP_REGISTER) && (iia->arg.type = IIOP_REGISTER))
-					{
-						if (ii->out.value == iia->arg.value)
-						PutStr("optimizer: move/copy to dyadic\n");
-						ii->print();
-						iia->print();
-						return ii;
-					}
-				}
-			}
-		}
+			if (ii->arg == ii->out) ii->remove();
+		}	
 	}
-
-	return NULL;
-}
-
-//---------------------------------------------------------------------------------------------
-
-void Function::optimizeMovesToDyadic()
-{
-	InterInstruction *ii, *iia;
-
-	while (ii = findMoveToDyadic())
-	{
-		RegisterUsage regusage[1] = { ii->out.value, REGU_NONE };
-
-		iia = code.next(ii);
-		registerUsageOverBlock(regusage, 1, iia, code.last());
-
-		if (!(regusage[0].usage & REGU_SRC))
-		{
-			iia->arg = ii->arg;
-			code.remove(ii);
-			PutStr("eliminated.\n");
-		}
-	}
-}
-
-
-BOOL Function::optimize()
-{
-	while (optimizeAllPushPullBlocks())
-	{
-		optimizeMovesToSelf();
-		optimizeMoveCascades();
-		optimizeMovesToDyadic();
-	}
-
-	return FALSE;
 }

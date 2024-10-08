@@ -12,6 +12,8 @@ Library *SysBase;
 Library *DOSBase;
 APTR TaskPool = NULL;
 
+int MemCounter = 0;
+
 extern ULONG Main(WBStartup *wbmsg);
 
 
@@ -67,6 +69,7 @@ APTR operator new(ULONG size) throw()
 
 	if (m = (ULONG*)AllocPooled(TaskPool, size))
 	{
+		MemCounter += size;
 		*m = size;
 		return m + 1;
 	}
@@ -84,9 +87,9 @@ void operator delete(APTR memory)
 {
 	ULONG *m = (ULONG*)memory - 1;
 
+	MemCounter -= *m;
 	FreePooled(TaskPool, m, *m);
 }
-
 
 void operator delete[](APTR memory)
 {

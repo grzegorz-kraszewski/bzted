@@ -1,9 +1,11 @@
 CC = g++
 LD = g++
-CFLAGS = -m68000 -nostdlib -fbaserel -O2 -fomit-frame-pointer -fno-exceptions -fno-rtti -mregparm -D__NOLIBBASE__
+CFLAGS = -W -Wall -Wno-parentheses -m68000 -nostdlib -fbaserel -O2 -fomit-frame-pointer -fno-exceptions \
+ -fno-rtti -mregparm -D__NOLIBBASE__
 LDFLAGS = -m68000 -nostdlib -fbaserel -nostartfiles -fno-exceptions -fno-rtti
 LIBS = 
-OBJS = start.o main.o compiler.o token.o keyedarray.o builtins.o inter.o function.o optimizer.o
+OBJS = start.o main.o compiler.o scanner.o lexer.o optimizer.o token.o function.o inter.o builtins.o \
+ syscalls.o logger.o strutils.o scheduler.o
 EXE = Bzted
 
 all: $(OBJS)
@@ -16,6 +18,9 @@ all: $(OBJS)
 clean:
 	rm -vf *.o $(EXE) $(EXE).db
 
+dep:
+	g++ -MM $(OBJS:.o=.cpp)
+
 start.o: start.cpp
 	@echo "Compiling $@..."
 	@$(CC) $(CFLAGS) -fwritable-strings -c -o $@ $<
@@ -26,13 +31,27 @@ start.o: start.cpp
 
 # dependencies
 
-builtins.o: builtins.cpp builtins.h operator.h function.h syslist.h inter.h keyedarray.h
-compiler.o: compiler.cpp compiler.h main.h token.h operator.h function.h syslist.h inter.h builtins.h keyedarray.h
-function.o: function.cpp main.h compiler.h token.h operator.h function.h syslist.h inter.h builtins.h keyedarray.h
-inter.o: inter.cpp main.h compiler.h token.h operator.h function.h syslist.h inter.h builtins.h keyedarray.h
-keyedarray.o: keyedarray.cpp keyedarray.h
-main.o: main.cpp compiler.h main.h token.h operator.h function.h syslist.h inter.h builtins.h keyedarray.h
 start.o: start.cpp
-syscalls.o: syscalls.cpp syscalls.h
-token.o: token.cpp main.h compiler.h token.h operator.h function.h syslist.h inter.h builtins.h keyedarray.h
-
+main.o: main.cpp compiler.h main.h rplist.h strutils.h keyedarray.h \
+ token.h function.h inter.h builtins.h operator.h syscalls.h logger.h
+compiler.o: compiler.cpp compiler.h main.h rplist.h strutils.h \
+ keyedarray.h token.h function.h inter.h builtins.h operator.h \
+ syscalls.h logger.h scanner.h lexer.h optimizer.h
+scanner.o: scanner.cpp scanner.h token.h function.h rplist.h \
+ strutils.h inter.h logger.h main.h
+lexer.o: lexer.cpp compiler.h main.h rplist.h strutils.h keyedarray.h \
+ token.h function.h inter.h builtins.h operator.h syscalls.h lexer.h \
+ logger.h
+optimizer.o: optimizer.cpp optimizer.h inter.h rplist.h strutils.h \
+ function.h main.h
+token.o: token.cpp compiler.h main.h rplist.h strutils.h keyedarray.h \
+ token.h function.h inter.h builtins.h operator.h syscalls.h logger.h
+function.o: function.cpp main.h compiler.h rplist.h strutils.h \
+ keyedarray.h token.h function.h inter.h builtins.h operator.h \
+ syscalls.h logger.h
+inter.o: inter.cpp main.h inter.h rplist.h strutils.h
+builtins.o: builtins.cpp builtins.h operator.h keyedarray.h strutils.h \
+ function.h rplist.h inter.h
+syscalls.o: syscalls.cpp syscalls.h keyedarray.h strutils.h
+logger.o: logger.cpp main.h logger.h strutils.h
+strutils.o: strutils.cpp strutils.h
