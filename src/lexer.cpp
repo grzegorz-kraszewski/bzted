@@ -82,7 +82,7 @@ bool Lexer::collectDefinitions()
 						// regular function definition
 						//-----------------------------
 
-						if (!(Comp->addFunction(token->text))) success = FALSE;
+						if (!(Comp->addFunction(token->text, token->lineNum))) success = FALSE;
 					}
 					else if (StrCmp(ahead->text, "[") == 0)
 					{
@@ -91,7 +91,7 @@ bool Lexer::collectDefinitions()
 						// data frame generator definition
 						//---------------------------------
 
-						if (!(Comp->addFunction(token->text))) success = FALSE;
+						if (!(Comp->addFunction(token->text, token->lineNum))) success = FALSE;
 					}
 					else
 					{

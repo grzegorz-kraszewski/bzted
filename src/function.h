@@ -24,10 +24,13 @@ class Function : public RpNamedNode<Function>
 	RpList<InterInstruction> code;
 	int numArguments;
 	int numResults;
+	const char *argumentTypes;
+	const char *resultTypes;
 	int maxStackDepth;
 	int firstFreeRegister;
 	bool resultsToFrame;
 	int frameSize;
+	int lineNum;
 	
 	bool expandCall(InterInstruction *ii);
 	bool expandSysCall(InterInstruction *call);
@@ -36,11 +39,15 @@ class Function : public RpNamedNode<Function>
 	
 	public:
 
-	Function(const char *name) : RpNamedNode<Function>(name)
+	Function(const char *name, int line) : RpNamedNode<Function>(name)
 	{
 		resultsToFrame = 0;
+		numArguments = 0;
+		numResults = 0;
+		lineNum = line;
 	}
 	
+	bool parseSignature();
 	void setResultMode(bool mode) { resultsToFrame = mode; }
 	bool toFrame() { return resultsToFrame; }
 	int getFrameSize() { return frameSize; }

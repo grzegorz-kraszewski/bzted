@@ -21,7 +21,83 @@ void Function::print()
 	for (InterInstruction *ii = code.first(); ii; ii = ii->next()) ii->print();
 };
 
+#define KNOWN_TYPES "bBwWlLpsx"
+
+#define FS_STATE_SEARCH   0
+#define FS_STATE_ARGTYPE  1
+#define FS_STATE_RESTYPE  2
+
 //---------------------------------------------------------------------------------------------
+// Function signature is appended to the name and is defined as "(<argtypes>.<restypes>)".
+// parseSignature() extract pointer to start of 'argtypes', pointer to start of 'restypes',
+// counts arguments and results (these numbers will be later compared to calculated stack
+// signature.
+
+bool Function::parseSignature()
+{
+	const char *p = name();
+	char x, state;
+
+	state = FS_STATE_SEARCH;
+
+	while (x = *p++)
+	{
+		switch (state)
+		{
+			case FS_STATE_SEARCH:
+				if (x == '(')
+				{
+					argumentTypes = p;
+					state = FS_STATE_ARGTYPE;
+				}
+			break;
+
+			case FS_STATE_ARGTYPE:
+				if (IsInString(x, KNOWN_TYPES)) numArguments++;
+				else if (x == '.')
+				{
+					resultTypes = p;
+					state = FS_STATE_RESTYPE;
+				}
+				else
+				{
+					log.lineError(lineNum, "unknown type '%lc' specified in arguments of '%s'",
+					 x, name());
+					return FALSE;
+				}
+			break;
+
+			case FS_STATE_RESTYPE:
+				if (IsInString(x, KNOWN_TYPES)) numResults++;
+				else if (x == ')')
+				{
+					if (*p == 0x00) return TRUE;
+					else
+					{
+						log.lineError(lineNum, "unexpected character '%lc' after signature "
+						 "of '%s'", *p, name());
+						return FALSE;
+					}
+				}
+				else
+				{
+					log.lineError(lineNum, "unknown type '%lc' specified in results of '%s'",
+					 x, name());
+					return FALSE;
+				}
+			break;
+		}
+	}
+
+	log.lineError(lineNum, "signature not found in definition of '%s'", name());
+	return FALSE;
+}
+
+
+//---------------------------------------------------------------------------------------------
+
+
+
 
 void Function::stackSignature()
 {

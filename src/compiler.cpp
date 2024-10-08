@@ -113,7 +113,7 @@ Token* Compiler::translateCodeBlock(Token *token, Function *function)
 					{
 						getUniqueLabel(label);
 
-						if (Function *f2 = addFunction(label))
+						if (Function *f2 = addFunction(label, token->lineNum))
 						{
 							token = translateCodeBlock(token, f2);
 							
@@ -232,9 +232,16 @@ void Compiler::dumpFunctions()
 }
 //---------------------------------------------------------------------------------------------
 
-Function* Compiler::addFunction(const char *name)
+Function* Compiler::addFunction(const char *name, int line)
 {
-	if (Function *f = new Function(name)) { functions.addTail(f); return f; }
+	if (Function *f = new Function(name, line))
+	{
+		if (f->parseSignature())
+		{
+			functions.addTail(f);
+			return f;
+		}
+	}
 	return NULL;
 }
 

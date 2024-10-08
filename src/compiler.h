@@ -75,7 +75,7 @@ class Compiler
 	bool isFunction(const char *name);
 	bool isOperator(const char *name);
 	bool isSysCall(const char *name);
-	Function* addFunction(const char *name);
+	Function* addFunction(const char *name, int line);
 	Operator* findOperator(const char *name) { return operators.find(name); }
 	Function* findFunction(const char *name) { return functions.find(name); }
 	SysCall* findSysCall(const char *name) { return sysCalls.find(name); }
