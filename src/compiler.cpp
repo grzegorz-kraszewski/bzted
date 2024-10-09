@@ -200,7 +200,7 @@ bool Compiler::optimize()
 
 bool Compiler::isFunction(const char *name)
 {
-	return functions.find(name) ? TRUE : FALSE;
+	return findFunction(name) ? TRUE : FALSE;
 }
 
 //---------------------------------------------------------------------------------------------
@@ -507,4 +507,21 @@ const char* Compiler::addDataFrame(int size)
 	}
 
 	return FALSE;
+}
+
+//---------------------------------------------------------------------------------------------
+// Finds the first function matching the name, ignoring the signature.
+
+Function* Compiler::findFunction(const char *key)
+{
+	for (Function *f = functions.first(); f; f = f->next())
+	{
+		const char *n = f->name();
+
+		while (*key && (*key++ == *n++));
+
+		if (*key == 0x00) return f;
+	}
+
+	return NULL;
 }

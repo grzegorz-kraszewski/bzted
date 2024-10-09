@@ -77,7 +77,7 @@ class Compiler
 	bool isSysCall(const char *name);
 	Function* addFunction(const char *name, int line);
 	Operator* findOperator(const char *name) { return operators.find(name); }
-	Function* findFunction(const char *name) { return functions.find(name); }
+	Function* findFunction(const char *name);
 	SysCall* findSysCall(const char *name) { return sysCalls.find(name); }
 	void getUniqueLabel(char *label);
 	bool addSysLibrary(const char *libname, int minver);

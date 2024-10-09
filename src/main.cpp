@@ -71,19 +71,24 @@ int Main(WBStartup *wbmsg)
 			if (compiler.scan(inputName))
 			{
 				log.verbose("memory usage: %ld bytes", MemCounter);
+
 				if (compiler.lex())
 				{
 					log.verbose("memory usage: %ld bytes", MemCounter);
 					compiler.dumpTokens();
-					result = RETURN_OK;
+
+					if (compiler.translate())
+					{
+						log.verbose("memory usage: %ld bytes", MemCounter);
+						compiler.dumpFunctions();
+						result = RETURN_OK;
+					}
 				}
 			}
 		}
 
 
-/*			if (!compiler.translate()) return RETURN_ERROR;
-			log.verbose("memory usage: %ld bytes", MemCounter);
-			compiler.dumpFunctions();
+/*
 			if (!compiler.transform()) return RETURN_ERROR;
 			log.verbose("memory usage: %ld bytes", MemCounter);
 			compiler.dumpFunctions();
