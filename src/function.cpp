@@ -95,14 +95,13 @@ bool Function::parseSignature()
 	return FALSE;
 }
 
-
 //---------------------------------------------------------------------------------------------
+// Calculates quantitative stack signature of the function. Then compares it with signature
+// declared in function definition. Any discrepancy is reported as error. 
 
-
-
-
-void Function::stackSignature()
+bool Function::stackSignature()
 {
+	bool signatureMatch = TRUE;
 	int stackBalance = 0, pullDepth = 0;
 
 	maxStackDepth = 0;
@@ -133,7 +132,7 @@ void Function::stackSignature()
 				realArguments = StrLen(sc->arguments) >> 1;
 				realResults = StrLen(sc->results) >> 1;
 			}
-			else return;
+			else return FALSE;
 
 			stackBalance -= realArguments;
 			stackBalance += realResults;
@@ -144,11 +143,26 @@ void Function::stackSignature()
 		if (stackBalance < pullDepth) pullDepth = stackBalance;
 	}
 
-	numArguments = -pullDepth;
-	numResults = numArguments + stackBalance;
-	if (numArguments > maxStackDepth) maxStackDepth = numArguments;
-	if (numResults > maxStackDepth) maxStackDepth = numResults;
+	int calculatedArguments = -pullDepth;
+	int calculatedResults = calculatedArguments + stackBalance;
+	if (calculatedArguments > maxStackDepth) maxStackDepth = calculatedArguments;
+	if (calculatedResults > maxStackDepth) maxStackDepth = calculatedResults;
+
+	if (numArguments != calculatedArguments)
+	{
+		log.lineError(lineNum, "function '%s', declared number of arguments (%ld) does not "
+		 "match real one (%ld)", name(), numArguments, calculatedArguments);
+		signatureMatch = FALSE;
+	}
 	
+	if (numResults != calculatedResults)
+	{
+		log.lineError(lineNum, "function '%s', declared number of results (%ld) does not "
+		 "match real one (%ld)", name(), numResults, calculatedResults);
+		signatureMatch = FALSE;
+	}
+	
+	return signatureMatch;
 }
 
 //---------------------------------------------------------------------------------------------

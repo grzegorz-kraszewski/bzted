@@ -61,7 +61,10 @@ Token* Compiler::translateDefinition(Token *token)
 		return NULL;
 	}
 
-	if (function = functions.find(token->text)) return translateCodeBlock(token->next(), function);
+	if (function = functions.find(token->text))
+	{
+		return translateCodeBlock(token->next(), function);
+	}
 	else
 	{
 		log.error("%ld: '%s', unknown type of definition", token->lineNum, token->text);
@@ -137,8 +140,15 @@ Token* Compiler::translateCodeBlock(Token *token, Function *function)
 
 					if (StrCmp(token->text, rightClosing) == 0)
 					{
-						function->stackSignature();						
-						return token->next();
+						if (function->stackSignature())
+						{
+							return token->next();
+						}
+						else
+						{
+							transResult = FALSE;
+							return NULL;
+						}
 					}
 
 					if (StrCmp(token->text, wrongClosing) == 0)

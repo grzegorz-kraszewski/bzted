@@ -52,7 +52,7 @@ class Function : public RpNamedNode<Function>
 	bool toFrame() { return resultsToFrame; }
 	int getFrameSize() { return frameSize; }
 	void addCode(InterInstruction *ii) { code.addTail(ii); }
-	void stackSignature();
+	bool stackSignature();
 	bool expand();
 	void expandAllCalls();
 	int replaceAllPushPullBlocks();
