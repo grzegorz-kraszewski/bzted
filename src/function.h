@@ -27,6 +27,8 @@ class Function : public RpNamedNode<Function>
 	const char *argumentTypes;
 	const char *resultTypes;
 	int maxStackDepth;
+	int stackOverTop;         // number of stack slots used above arguments, without subcalls
+	int totalOverTop;         // number of stack slots used above arguments, with subcalls
 	int firstFreeRegister;
 	bool resultsToFrame;
 	int frameSize;
@@ -45,6 +47,8 @@ class Function : public RpNamedNode<Function>
 		numArguments = 0;
 		numResults = 0;
 		lineNum = line;
+		stackOverTop = 0;
+		totalOverTop = 0;
 	}
 	
 	bool parseSignature();
@@ -52,7 +56,7 @@ class Function : public RpNamedNode<Function>
 	bool toFrame() { return resultsToFrame; }
 	int getFrameSize() { return frameSize; }
 	void addCode(InterInstruction *ii) { code.addTail(ii); }
-	bool stackSignature();
+	bool stackCalculations();
 	bool expand();
 	void expandAllCalls();
 	int replaceAllPushPullBlocks();

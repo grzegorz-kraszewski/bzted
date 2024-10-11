@@ -12,11 +12,12 @@ void Function::print()
 {
 	if (resultsToFrame)
 	{
-		Printf("%s: (%ld/%ld), frame[%ld]\n", name(), numArguments, numResults, frameSize);
+		Printf("%s: (%ld/%ld), frame[%ld], overtop = %ld\n", name(), numArguments, numResults,
+		 frameSize, stackOverTop);
 	}
 	else
 	{
-		Printf("%s: (%ld/%ld)\n", name(), numArguments, numResults);
+		Printf("%s: (%ld/%ld), overtop = %ld\n", name(), numArguments, numResults, stackOverTop);
 	}
 	for (InterInstruction *ii = code.first(); ii; ii = ii->next()) ii->print();
 };
@@ -96,10 +97,15 @@ bool Function::parseSignature()
 }
 
 //---------------------------------------------------------------------------------------------
-// Calculates quantitative stack signature of the function. Then compares it with signature
-// declared in function definition. Any discrepancy is reported as error. 
+// Calculates quantitative stack parameters of the function.
+// - number of arguments
+// - number of results
+// - stack height used above arguments (stackOverTop)
+// - stack height used above arguments including subcalls (totalOverTop)
+// Calculated numbers of arguments and results are compared with declared function signature.
+// Error is reported if they do not match.
 
-bool Function::stackSignature()
+bool Function::stackCalculations()
 {
 	bool signatureMatch = TRUE;
 	int stackBalance = 0, pullDepth = 0;
@@ -115,6 +121,7 @@ bool Function::stackSignature()
 		else if ((ii->code == II_PUSH) || (ii->code == II_DROP))
 		{
 			stackBalance++;
+			if (stackBalance > stackOverTop) stackOverTop = stackBalance;
 		}
 		else if (ii->code == II_JSBR)
 		{
@@ -134,8 +141,9 @@ bool Function::stackSignature()
 			}
 			else return FALSE;
 
-			stackBalance -= realArguments;
+			stackBalance -= realArguments;			
 			stackBalance += realResults;
+			if (stackBalance > stackOverTop) stackOverTop = stackBalance;
 			if (realArguments > maxStackDepth) maxStackDepth = realArguments;
 			if (realResults > maxStackDepth) maxStackDepth = realResults;
 		}

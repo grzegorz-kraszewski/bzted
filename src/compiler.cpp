@@ -140,7 +140,7 @@ Token* Compiler::translateCodeBlock(Token *token, Function *function)
 
 					if (StrCmp(token->text, rightClosing) == 0)
 					{
-						if (function->stackSignature())
+						if (function->stackCalculations())
 						{
 							return token->next();
 						}
